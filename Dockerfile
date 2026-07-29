@@ -18,7 +18,11 @@ RUN npm ci
 
 FROM dependencies AS build
 COPY . .
-RUN npx prisma generate && npm run build
+# Prisma generate validates the config URL but does not connect to PostgreSQL.
+# Keep this build-only URL scoped to the command; runtime and migrations receive
+# the real DATABASE_URL through the Compose environment file.
+RUN DATABASE_URL=postgresql://build:build@localhost:5432/build npx prisma generate \
+  && npm run build
 
 FROM build AS migration
 ENV NODE_ENV=production
