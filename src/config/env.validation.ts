@@ -44,11 +44,27 @@ export const environmentSchema = Joi.object({
     .valid('mock', 'openai', 'anthropic', 'gemini', 'local')
     .default('mock'),
   LLM_TIMEOUT_MS: Joi.number().integer().min(1000).max(300000).default(60000),
+  OPENAI_API_KEY: Joi.when('LLM_PROVIDER', {
+    is: 'openai',
+    then: Joi.string().min(20).required(),
+    otherwise: Joi.string().allow('').optional(),
+  }),
+  OPENAI_BASE_URL: Joi.string()
+    .uri({ scheme: ['https'] })
+    .default('https://api.openai.com/v1'),
+  OPENAI_MODEL: Joi.string().min(1).max(100).default('gpt-5.6-sol'),
+  OPENAI_REASONING_EFFORT: Joi.string()
+    .valid('none', 'low', 'medium', 'high', 'xhigh', 'max')
+    .default('medium'),
+  OPENAI_MAX_OUTPUT_TOKENS: Joi.number().integer().min(1000).max(128000).default(20000),
+  OPENAI_PROJECT_ID: Joi.string().max(255).allow('').optional(),
+  OPENAI_ORGANIZATION_ID: Joi.string().max(255).allow('').optional(),
   SEARCH_PROVIDER: Joi.string()
     .valid('mock', 'google', 'bing', 'brave', 'tavily', 'serper')
     .default('mock'),
   SEARCH_MAX_RESULTS: Joi.number().integer().min(1).max(50).default(12),
   SEARCH_TIMEOUT_MS: Joi.number().integer().min(1000).max(120000).default(30000),
+  SEARCH_QUERY_CONCURRENCY: Joi.number().integer().min(1).max(10).default(3),
   SEARCH_DOMAIN_ALLOWLIST: Joi.string().allow('').default(''),
   SEARCH_DOMAIN_BLOCKLIST: Joi.string().allow('').default(''),
   TAVILY_API_KEY: Joi.when('SEARCH_PROVIDER', {

@@ -79,8 +79,9 @@ Edit `.env.production` and replace every example value. Required choices:
   characters when putting those passwords into `DATABASE_URL` or `REDIS_URL`.
 - Keep `COOKIE_SECURE=true`, `TRUST_PROXY=true`, and `SWAGGER_ENABLED=false`.
 - Set `SEARCH_PROVIDER=tavily` and `TAVILY_API_KEY` to enable hosted search.
-  Keep the mock provider until a real key and usage budget are ready. Select a
-  hosted LLM only after its adapter and credentials have been configured.
+  Set `LLM_PROVIDER=openai` and `OPENAI_API_KEY` to enable hosted roadmap
+  synthesis. Keep mock providers until real keys, provider data-processing
+  requirements, rate limits, and usage budgets are approved.
 
 The production environment file is ignored by Git. Never copy it into an image
 or commit it.

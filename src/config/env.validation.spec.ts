@@ -32,4 +32,21 @@ describe('environment validation', () => {
     expect(missing.error).toBeDefined();
     expect(configured.error).toBeUndefined();
   });
+
+  it('requires an API key when OpenAI is selected', () => {
+    const missing = environmentSchema.validate({
+      ...base,
+      NODE_ENV: 'test',
+      LLM_PROVIDER: 'openai',
+    });
+    const configured = environmentSchema.validate({
+      ...base,
+      NODE_ENV: 'test',
+      LLM_PROVIDER: 'openai',
+      OPENAI_API_KEY: 'sk-valid-openai-test-key',
+    });
+
+    expect(missing.error).toBeDefined();
+    expect(configured.error).toBeUndefined();
+  });
 });

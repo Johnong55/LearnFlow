@@ -4,6 +4,7 @@ export default registerAs('search', () => ({
   provider: process.env.SEARCH_PROVIDER ?? 'mock',
   maxResults: Number(process.env.SEARCH_MAX_RESULTS ?? 12),
   timeoutMs: Number(process.env.SEARCH_TIMEOUT_MS ?? 30000),
+  queryConcurrency: Number(process.env.SEARCH_QUERY_CONCURRENCY ?? 3),
   allowlist: (process.env.SEARCH_DOMAIN_ALLOWLIST ?? '')
     .split(',')
     .map((value) => value.trim())
