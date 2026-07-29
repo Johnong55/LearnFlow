@@ -1,0 +1,795 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum LearningStyle {
+  VISUAL
+  AUDITORY
+  READING_WRITING
+  KINESTHETIC
+  MIXED
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  OFFICE
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum LearningFormat {
+  VIDEO
+  TEXT
+  INTERACTIVE
+  PROJECT
+  MENTOR
+  MIXED
+}
+
+enum RoutineType {
+  SLEEP
+  WORK
+  COMMUTE
+  BREAKFAST
+  LUNCH
+  DINNER
+  EXERCISE
+  HYGIENE
+  FAMILY
+  REST
+  ENTERTAINMENT
+  HOUSEWORK
+  PERSONAL
+  OTHER
+}
+
+enum AvailabilityType {
+  AVAILABLE
+  UNAVAILABLE
+  PREFERRED
+}
+
+enum ConstraintPriority {
+  HARD
+  SOFT
+}
+
+enum SkillLevel {
+  NONE
+  BEGINNER
+  ELEMENTARY
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum UserSkillType {
+  CURRENT
+  TARGET
+  BOTH
+}
+
+enum GoalStatus {
+  DRAFT
+  ANALYZING
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum GoalPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RoadmapStatus {
+  DRAFT
+  GENERATING
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+  FAILED
+}
+
+enum RoadmapVersionStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum RoadmapDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum LearningTaskType {
+  LEARNING
+  PRACTICE
+  PROJECT
+  ASSESSMENT
+  REVIEW
+}
+
+enum LearningTaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+enum ResourceContentType {
+  ROADMAP
+  ARTICLE
+  VIDEO
+  COURSE
+  DOCUMENTATION
+  BOOK
+  REPOSITORY
+  OTHER
+}
+
+enum CalendarEventType {
+  APPOINTMENT
+  WORK
+  PERSONAL
+  MEDICAL
+  FAMILY
+  TRAVEL
+  OTHER
+}
+
+enum StudySessionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  PAUSED
+  COMPLETED
+  SKIPPED
+  MISSED
+  CANCELLED
+}
+
+enum StudySessionSource {
+  GENERATED
+  REBALANCED
+  MANUAL
+}
+
+enum ReschedulingMode {
+  BALANCED
+  DEADLINE_FOCUSED
+  LOW_STRESS
+}
+
+enum SchedulingConflictStatus {
+  OPEN
+  RESOLVED
+}
+
+enum NotificationType {
+  SCHEDULE_CHANGED
+  DEADLINE_RISK
+  PROGRESS_SUMMARY
+  SYSTEM
+}
+
+model User {
+  id                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                   String                   @unique @db.VarChar(320)
+  passwordHash            String                   @map("password_hash")
+  role                    UserRole                 @default(USER)
+  emailVerifiedAt         DateTime?                @map("email_verified_at") @db.Timestamptz(3)
+  onboardingCompletedAt   DateTime?                @map("onboarding_completed_at") @db.Timestamptz(3)
+  lastLoginAt             DateTime?                @map("last_login_at") @db.Timestamptz(3)
+  createdAt               DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt               DateTime?                @map("deleted_at") @db.Timestamptz(3)
+  profile                 UserProfile?
+  preference              UserPreference?
+  refreshTokens           RefreshToken[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  backgroundJobs          BackgroundJob[]
+  auditLogs               AuditLog[]
+  onboardingProgress      OnboardingProgress?
+  routines                Routine[]
+  availabilityRules       AvailabilityRule[]
+  userSkills              UserSkill[]
+  learningGoals           LearningGoal[]
+  roadmaps                Roadmap[]
+  calendarEvents          CalendarEvent[]
+  studySessions           StudySession[]
+  schedulingConflicts     SchedulingConflict[]
+  sessionFeedback         SessionFeedback[]
+  progressSnapshots       ProgressSnapshot[]
+  notifications           Notification[]
+
+  @@index([role])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model UserProfile {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @unique @map("user_id") @db.Uuid
+  fullName    String    @map("full_name") @db.VarChar(150)
+  timezone    String    @default("UTC") @db.VarChar(100)
+  locale      String    @default("en") @db.VarChar(20)
+  dateOfBirth DateTime? @map("date_of_birth") @db.Date
+  occupation  String?   @db.VarChar(150)
+  jobTitle    String?   @map("job_title") @db.VarChar(150)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+}
+
+model UserPreference {
+  id                      String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                  String          @unique @map("user_id") @db.Uuid
+  preferredLearningStyle  LearningStyle?  @map("preferred_learning_style")
+  preferredSessionMinutes Int             @default(45) @map("preferred_session_minutes")
+  preferredStudyTime      String?         @map("preferred_study_time") @db.VarChar(30)
+  preferredStudyDays      DayOfWeek[]     @default([]) @map("preferred_study_days")
+  preferredLearningFormat LearningFormat? @map("preferred_learning_format")
+  maxDailyLearningMinutes Int             @default(120) @map("max_daily_learning_minutes")
+  maxCognitiveLoad        Int             @default(7) @map("max_cognitive_load")
+  notifications           Json            @default("{}")
+  createdAt               DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user                    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model OnboardingProgress {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String    @unique @map("user_id") @db.Uuid
+  currentStep         Int       @default(1) @map("current_step")
+  personalProfile     Json?     @map("personal_profile")
+  workSchedule        Json?     @map("work_schedule")
+  lifeRoutine         Json?     @map("life_routine")
+  learningPreferences Json?     @map("learning_preferences")
+  completedAt         DateTime? @map("completed_at") @db.Timestamptz(3)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([completedAt])
+  @@map("onboarding_progress")
+}
+
+model Routine {
+  id                       String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                   String             @map("user_id") @db.Uuid
+  type                     RoutineType
+  title                    String             @db.VarChar(150)
+  weekdays                 DayOfWeek[]
+  startTime                String             @map("start_time") @db.VarChar(5)
+  endTime                  String             @map("end_time") @db.VarChar(5)
+  isFlexible               Boolean            @default(false) @map("is_flexible")
+  constraintPriority       ConstraintPriority @default(HARD) @map("constraint_priority")
+  priority                 Int                @default(3)
+  minimumDurationMinutes   Int?               @map("minimum_duration_minutes")
+  preferredDurationMinutes Int?               @map("preferred_duration_minutes")
+  bufferBeforeMinutes      Int                @default(0) @map("buffer_before_minutes")
+  bufferAfterMinutes       Int                @default(0) @map("buffer_after_minutes")
+  source                   String             @default("USER") @db.VarChar(30)
+  createdAt                DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt                DateTime?          @map("deleted_at") @db.Timestamptz(3)
+  user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, deletedAt])
+  @@index([userId, type])
+  @@map("routines")
+}
+
+model AvailabilityRule {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String             @map("user_id") @db.Uuid
+  title              String             @db.VarChar(150)
+  type               AvailabilityType
+  constraintPriority ConstraintPriority @default(HARD) @map("constraint_priority")
+  weekdays           DayOfWeek[]
+  startTime          String             @map("start_time") @db.VarChar(5)
+  endTime            String             @map("end_time") @db.VarChar(5)
+  effectiveFrom      DateTime?          @map("effective_from") @db.Date
+  effectiveUntil     DateTime?          @map("effective_until") @db.Date
+  metadata           Json?
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt          DateTime?          @map("deleted_at") @db.Timestamptz(3)
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, deletedAt])
+  @@index([userId, type])
+  @@map("availability_rules")
+}
+
+model Skill {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String         @db.VarChar(150)
+  slug        String         @unique @db.VarChar(180)
+  category    String?        @db.VarChar(100)
+  description String?        @db.Text
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  userSkills  UserSkill[]
+  goals       LearningGoal[]
+
+  @@index([name])
+  @@map("skills")
+}
+
+model UserSkill {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+  skillId         String        @map("skill_id") @db.Uuid
+  type            UserSkillType @default(CURRENT)
+  currentLevel    SkillLevel    @default(NONE) @map("current_level")
+  targetLevel     SkillLevel?   @map("target_level")
+  confidenceLevel Int?          @map("confidence_level")
+  lastPracticedAt DateTime?     @map("last_practiced_at") @db.Timestamptz(3)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt       DateTime?     @map("deleted_at") @db.Timestamptz(3)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill           Skill         @relation(fields: [skillId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, skillId])
+  @@index([userId, deletedAt])
+  @@index([skillId])
+  @@map("user_skills")
+}
+
+model LearningGoal {
+  id                   String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String             @map("user_id") @db.Uuid
+  skillId              String             @map("skill_id") @db.Uuid
+  title                String             @db.VarChar(200)
+  description          String             @db.Text
+  currentLevel         SkillLevel         @map("current_level")
+  targetLevel          SkillLevel         @map("target_level")
+  targetDate           DateTime           @map("target_date") @db.Timestamptz(3)
+  priority             GoalPriority       @default(MEDIUM)
+  weeklyAvailableHours Decimal            @map("weekly_available_hours") @db.Decimal(4, 1)
+  status               GoalStatus         @default(DRAFT)
+  successCriteria      Json               @map("success_criteria")
+  userConstraints      Json?              @map("user_constraints")
+  createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt            DateTime?          @map("deleted_at") @db.Timestamptz(3)
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill                Skill              @relation(fields: [skillId], references: [id], onDelete: Restrict)
+  roadmap              Roadmap?
+  progressSnapshots    ProgressSnapshot[]
+
+  @@index([userId, status])
+  @@index([skillId])
+  @@index([targetDate])
+  @@map("learning_goals")
+}
+
+model Roadmap {
+  id                   String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String               @map("user_id") @db.Uuid
+  goalId               String               @unique @map("goal_id") @db.Uuid
+  title                String               @db.VarChar(250)
+  status               RoadmapStatus        @default(DRAFT)
+  currentVersionNumber Int                  @default(0) @map("current_version_number")
+  activeVersionNumber  Int?                 @map("active_version_number")
+  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt            DateTime?            @map("deleted_at") @db.Timestamptz(3)
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal                 LearningGoal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  versions             RoadmapVersion[]
+  schedulingConflicts  SchedulingConflict[]
+  progressSnapshots    ProgressSnapshot[]
+
+  @@index([userId, status])
+  @@index([goalId])
+  @@map("roadmaps")
+}
+
+model RoadmapVersion {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  roadmapId          String               @map("roadmap_id") @db.Uuid
+  generationJobId    String               @unique @map("generation_job_id") @db.Uuid
+  version            Int
+  status             RoadmapVersionStatus @default(DRAFT)
+  summary            String               @db.Text
+  estimatedWeeks     Int                  @map("estimated_weeks")
+  weeklyHours        Decimal              @map("weekly_hours") @db.Decimal(4, 1)
+  difficulty         RoadmapDifficulty
+  assumptions        Json
+  prerequisites      Json
+  generationMetadata Json                 @map("generation_metadata")
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  roadmap            Roadmap              @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  generationJob      BackgroundJob        @relation(fields: [generationJobId], references: [id], onDelete: Restrict)
+  milestones         RoadmapMilestone[]
+  sources            RoadmapSource[]
+
+  @@unique([roadmapId, version])
+  @@index([roadmapId, status])
+  @@map("roadmap_versions")
+}
+
+model RoadmapMilestone {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  versionId      String          @map("version_id") @db.Uuid
+  title          String          @db.VarChar(250)
+  description    String?         @db.Text
+  order          Int
+  estimatedHours Decimal         @map("estimated_hours") @db.Decimal(6, 1)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  version        RoadmapVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  modules        RoadmapModule[]
+
+  @@unique([versionId, order])
+  @@index([versionId])
+  @@map("roadmap_milestones")
+}
+
+model RoadmapModule {
+  id               String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  milestoneId      String                @map("milestone_id") @db.Uuid
+  title            String                @db.VarChar(250)
+  description      String?               @db.Text
+  order            Int
+  estimatedHours   Decimal               @map("estimated_hours") @db.Decimal(6, 1)
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  milestone        RoadmapMilestone      @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  tasks            LearningTask[]
+  sourceReferences RoadmapModuleSource[]
+
+  @@unique([milestoneId, order])
+  @@index([milestoneId])
+  @@map("roadmap_modules")
+}
+
+model LearningTask {
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  moduleId            String               @map("module_id") @db.Uuid
+  title               String               @db.VarChar(250)
+  description         String?              @db.Text
+  type                LearningTaskType
+  status              LearningTaskStatus   @default(PENDING)
+  order               Int
+  estimatedMinutes    Int                  @map("estimated_minutes")
+  difficulty          RoadmapDifficulty
+  priority            Int                  @default(3)
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  module              RoadmapModule        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  dependencies        TaskDependency[]     @relation("DependentTask")
+  dependents          TaskDependency[]     @relation("PrerequisiteTask")
+  studySessions       StudySession[]
+  schedulingConflicts SchedulingConflict[]
+  feedback            SessionFeedback[]
+
+  @@unique([moduleId, order])
+  @@index([moduleId, status])
+  @@map("learning_tasks")
+}
+
+model CalendarEvent {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String            @map("user_id") @db.Uuid
+  title       String            @db.VarChar(200)
+  description String?           @db.Text
+  type        CalendarEventType @default(PERSONAL)
+  startAt     DateTime          @map("start_at") @db.Timestamptz(3)
+  endAt       DateTime          @map("end_at") @db.Timestamptz(3)
+  isFixed     Boolean           @default(true) @map("is_fixed")
+  isAllDay    Boolean           @default(false) @map("is_all_day")
+  location    String?           @db.VarChar(250)
+  metadata    Json?
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt   DateTime?         @map("deleted_at") @db.Timestamptz(3)
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startAt])
+  @@index([userId, endAt])
+  @@index([userId, deletedAt])
+  @@map("calendar_events")
+}
+
+model StudySession {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String             @map("user_id") @db.Uuid
+  taskId             String             @map("task_id") @db.Uuid
+  startAt            DateTime           @map("start_at") @db.Timestamptz(3)
+  endAt              DateTime           @map("end_at") @db.Timestamptz(3)
+  plannedMinutes     Int                @map("planned_minutes")
+  actualMinutes      Int?               @map("actual_minutes")
+  status             StudySessionStatus @default(SCHEDULED)
+  source             StudySessionSource @default(GENERATED)
+  startedAt          DateTime?          @map("started_at") @db.Timestamptz(3)
+  lastResumedAt      DateTime?          @map("last_resumed_at") @db.Timestamptz(3)
+  pausedAt           DateTime?          @map("paused_at") @db.Timestamptz(3)
+  completedAt        DateTime?          @map("completed_at") @db.Timestamptz(3)
+  accumulatedSeconds Int                @default(0) @map("accumulated_seconds")
+  skipReason         String?            @map("skip_reason") @db.VarChar(500)
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  deletedAt          DateTime?          @map("deleted_at") @db.Timestamptz(3)
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task               LearningTask       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  feedback           SessionFeedback?
+
+  @@unique([taskId, startAt, endAt])
+  @@index([userId, startAt])
+  @@index([userId, status, startAt])
+  @@index([taskId, status])
+  @@map("study_sessions")
+}
+
+model SessionFeedback {
+  id                     String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                 String        @map("user_id") @db.Uuid
+  taskId                 String        @map("task_id") @db.Uuid
+  sessionId              String?       @unique @map("session_id") @db.Uuid
+  difficultyRating       Int?          @map("difficulty_rating")
+  focusLevel             Int?          @map("focus_level")
+  actualMinutes          Int?          @map("actual_minutes")
+  tookLongerThanExpected Boolean       @default(false) @map("took_longer_than_expected")
+  notes                  String?       @db.Text
+  createdAt              DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user                   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task                   LearningTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  session                StudySession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([taskId, createdAt])
+  @@map("session_feedback")
+}
+
+model ProgressSnapshot {
+  id                      String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                  String       @map("user_id") @db.Uuid
+  goalId                  String       @map("goal_id") @db.Uuid
+  roadmapId               String       @map("roadmap_id") @db.Uuid
+  periodStart             DateTime     @map("period_start") @db.Timestamptz(3)
+  periodEnd               DateTime     @map("period_end") @db.Timestamptz(3)
+  snapshotDate            DateTime     @map("snapshot_date") @db.Date
+  plannedMinutes          Int          @map("planned_minutes")
+  actualMinutes           Int          @map("actual_minutes")
+  taskCompletionRate      Decimal      @map("task_completion_rate") @db.Decimal(5, 2)
+  milestoneCompletionRate Decimal      @map("milestone_completion_rate") @db.Decimal(5, 2)
+  scheduleAdherenceRate   Decimal      @map("schedule_adherence_rate") @db.Decimal(5, 2)
+  currentStreak           Int          @map("current_streak")
+  weeklyConsistency       Decimal      @map("weekly_consistency") @db.Decimal(5, 2)
+  estimatedCompletionDate DateTime?    @map("estimated_completion_date") @db.Timestamptz(3)
+  scheduleVarianceDays    Int          @map("schedule_variance_days")
+  createdAt               DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  user                    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal                    LearningGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  roadmap                 Roadmap      @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+
+  @@unique([goalId, snapshotDate])
+  @@index([userId, createdAt])
+  @@index([goalId, createdAt])
+  @@index([roadmapId, createdAt])
+  @@map("progress_snapshots")
+}
+
+model Notification {
+  id        String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String             @map("user_id") @db.Uuid
+  type      NotificationType
+  status    NotificationStatus @default(PENDING)
+  title     String             @db.VarChar(200)
+  message   String             @db.Text
+  metadata  Json?
+  readAt    DateTime?          @map("read_at") @db.Timestamptz(3)
+  sentAt    DateTime?          @map("sent_at") @db.Timestamptz(3)
+  createdAt DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, createdAt])
+  @@map("notifications")
+}
+
+model SchedulingConflict {
+  id         String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String                   @map("user_id") @db.Uuid
+  roadmapId  String                   @map("roadmap_id") @db.Uuid
+  taskId     String?                  @map("task_id") @db.Uuid
+  code       String                   @db.VarChar(100)
+  reason     String                   @db.Text
+  details    Json?
+  status     SchedulingConflictStatus @default(OPEN)
+  resolvedAt DateTime?                @map("resolved_at") @db.Timestamptz(3)
+  createdAt  DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user       User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roadmap    Roadmap                  @relation(fields: [roadmapId], references: [id], onDelete: Cascade)
+  task       LearningTask?            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, createdAt])
+  @@index([roadmapId, status])
+  @@index([taskId])
+  @@map("scheduling_conflicts")
+}
+
+model TaskDependency {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskId         String       @map("task_id") @db.Uuid
+  prerequisiteId String       @map("prerequisite_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  task           LearningTask @relation("DependentTask", fields: [taskId], references: [id], onDelete: Cascade)
+  prerequisite   LearningTask @relation("PrerequisiteTask", fields: [prerequisiteId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, prerequisiteId])
+  @@index([prerequisiteId])
+  @@map("task_dependencies")
+}
+
+model RoadmapSource {
+  id               String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  versionId        String                @map("version_id") @db.Uuid
+  title            String                @db.VarChar(500)
+  url              String                @db.VarChar(2048)
+  description      String?               @db.Text
+  sourceDomain     String                @map("source_domain") @db.VarChar(255)
+  publishedAt      DateTime?             @map("published_at") @db.Timestamptz(3)
+  retrievedAt      DateTime              @map("retrieved_at") @db.Timestamptz(3)
+  contentType      ResourceContentType   @map("content_type")
+  relevanceScore   Decimal               @map("relevance_score") @db.Decimal(4, 3)
+  credibilityScore Decimal               @map("credibility_score") @db.Decimal(4, 3)
+  language         String                @db.VarChar(20)
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  version          RoadmapVersion        @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  moduleReferences RoadmapModuleSource[]
+
+  @@unique([versionId, url])
+  @@index([versionId])
+  @@index([sourceDomain])
+  @@map("roadmap_sources")
+}
+
+model RoadmapModuleSource {
+  moduleId String        @map("module_id") @db.Uuid
+  sourceId String        @map("source_id") @db.Uuid
+  module   RoadmapModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  source   RoadmapSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@id([moduleId, sourceId])
+  @@index([sourceId])
+  @@map("roadmap_module_sources")
+}
+
+model RefreshToken {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  familyId     String    @map("family_id") @db.Uuid
+  tokenHash    String    @unique @map("token_hash") @db.Char(64)
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(3)
+  replacedById String?   @map("replaced_by_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  userAgent    String?   @map("user_agent") @db.VarChar(500)
+  ipAddress    String?   @map("ip_address") @db.Inet
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("email_verification_tokens")
+}
+
+model BackgroundJob {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String?          @map("user_id") @db.Uuid
+  queueName       String           @map("queue_name") @db.VarChar(100)
+  externalId      String?          @map("external_id") @db.VarChar(150)
+  type            String           @db.VarChar(100)
+  status          JobStatus        @default(QUEUED)
+  progress        Int              @default(0)
+  statusMessage   String?          @map("status_message") @db.VarChar(250)
+  payload         Json?
+  result          Json?
+  errorCode       String?          @map("error_code") @db.VarChar(100)
+  errorMessage    String?          @map("error_message") @db.Text
+  attempts        Int              @default(0)
+  startedAt       DateTime?        @map("started_at") @db.Timestamptz(3)
+  completedAt     DateTime?        @map("completed_at") @db.Timestamptz(3)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  roadmapVersions RoadmapVersion[]
+
+  @@unique([queueName, externalId])
+  @@index([userId])
+  @@index([status, createdAt])
+  @@map("background_jobs")
+}
+
+model AuditLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String   @db.VarChar(100)
+  entityType String?  @map("entity_type") @db.VarChar(100)
+  entityId   String?  @map("entity_id") @db.VarChar(100)
+  requestId  String?  @map("request_id") @db.Uuid
+  ipAddress  String?  @map("ip_address") @db.Inet
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
