@@ -49,4 +49,22 @@ describe('environment validation', () => {
     expect(missing.error).toBeDefined();
     expect(configured.error).toBeUndefined();
   });
+
+  it('requires an account ID and API token when Cloudflare Workers AI is selected', () => {
+    const missing = environmentSchema.validate({
+      ...base,
+      NODE_ENV: 'test',
+      LLM_PROVIDER: 'cloudflare-workers-ai',
+    });
+    const configured = environmentSchema.validate({
+      ...base,
+      NODE_ENV: 'test',
+      LLM_PROVIDER: 'cloudflare-workers-ai',
+      CLOUDFLARE_ACCOUNT_ID: '0123456789abcdef0123456789abcdef',
+      CLOUDFLARE_API_TOKEN: 'cloudflare-valid-test-api-token',
+    });
+
+    expect(missing.error).toBeDefined();
+    expect(configured.error).toBeUndefined();
+  });
 });

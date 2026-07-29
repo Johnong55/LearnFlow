@@ -41,7 +41,7 @@ export const environmentSchema = Joi.object({
   RATE_LIMIT_MAX: Joi.number().integer().min(1).default(100),
   LOG_LEVEL: Joi.string().valid('debug', 'log', 'warn', 'error').default('log'),
   LLM_PROVIDER: Joi.string()
-    .valid('mock', 'openai', 'anthropic', 'gemini', 'local')
+    .valid('mock', 'openai', 'cloudflare-workers-ai', 'anthropic', 'gemini', 'local')
     .default('mock'),
   LLM_TIMEOUT_MS: Joi.number().integer().min(1000).max(300000).default(60000),
   OPENAI_API_KEY: Joi.when('LLM_PROVIDER', {
@@ -59,6 +59,26 @@ export const environmentSchema = Joi.object({
   OPENAI_MAX_OUTPUT_TOKENS: Joi.number().integer().min(1000).max(128000).default(20000),
   OPENAI_PROJECT_ID: Joi.string().max(255).allow('').optional(),
   OPENAI_ORGANIZATION_ID: Joi.string().max(255).allow('').optional(),
+  CLOUDFLARE_ACCOUNT_ID: Joi.when('LLM_PROVIDER', {
+    is: 'cloudflare-workers-ai',
+    then: Joi.string()
+      .pattern(/^[a-fA-F0-9]{32}$/)
+      .required(),
+    otherwise: Joi.string().allow('').optional(),
+  }),
+  CLOUDFLARE_API_TOKEN: Joi.when('LLM_PROVIDER', {
+    is: 'cloudflare-workers-ai',
+    then: Joi.string().min(20).max(512).required(),
+    otherwise: Joi.string().allow('').optional(),
+  }),
+  CLOUDFLARE_AI_BASE_URL: Joi.string()
+    .uri({ scheme: ['https'] })
+    .default('https://api.cloudflare.com/client/v4'),
+  CLOUDFLARE_AI_MODEL: Joi.string()
+    .pattern(/^@[a-z0-9-]+\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/)
+    .default('@cf/meta/llama-3.3-70b-instruct-fp8-fast'),
+  CLOUDFLARE_AI_MAX_TOKENS: Joi.number().integer().min(256).max(24000).default(8192),
+  CLOUDFLARE_AI_TEMPERATURE: Joi.number().min(0).max(5).default(0.2),
   SEARCH_PROVIDER: Joi.string()
     .valid('mock', 'google', 'bing', 'brave', 'tavily', 'serper')
     .default('mock'),

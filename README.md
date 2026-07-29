@@ -162,9 +162,9 @@ Required in production: `DATABASE_URL`, `REDIS_URL`, and distinct 32+ character 
 
 Local development defaults to deterministic `SEARCH_PROVIDER=mock` and
 `LLM_PROVIDER=mock`. Tavily is available as the first hosted search adapter;
-OpenAI Responses API is available as the first hosted LLM adapter. Other
-unsupported provider names fail during startup rather than silently falling
-back.
+OpenAI Responses API and Cloudflare Workers AI are available as hosted LLM
+adapters. Other unsupported provider names fail during startup rather than
+silently falling back.
 
 To enable Tavily, create an API key in its dashboard and update the environment:
 
@@ -193,6 +193,25 @@ search snippets to the configured model. It sets `store=false`, uses a hashed
 user identifier for the safety identifier, handles refusals and incomplete
 responses, parses strict JSON Schema output, validates it again with Zod, and
 rejects any source URL that was not returned by search.
+
+To use a Cloudflare-hosted model instead of OpenAI, create a Workers AI API token
+with `Workers AI - Read` and `Workers AI - Edit` permissions, copy the account ID,
+and configure:
+
+```dotenv
+LLM_PROVIDER=cloudflare-workers-ai
+CLOUDFLARE_ACCOUNT_ID=replace-with-your-32-character-account-id
+CLOUDFLARE_API_TOKEN=replace-with-your-workers-ai-api-token
+CLOUDFLARE_AI_MODEL=@cf/meta/llama-3.3-70b-instruct-fp8-fast
+CLOUDFLARE_AI_MAX_TOKENS=8192
+CLOUDFLARE_AI_TEMPERATURE=0.2
+```
+
+The adapter calls Cloudflare's authenticated REST endpoint directly and requests
+non-streaming JSON Schema output. Workers AI does not guarantee schema compliance
+for every generation, so the existing application-level Zod validation remains
+mandatory. Invalid model output fails the job and is retried through BullMQ; it
+is never persisted as a roadmap.
 
 Roadmap discovery does not depend on finding one complete public roadmap. Each
 run searches for roadmaps, official documentation, learning paths, tutorials,

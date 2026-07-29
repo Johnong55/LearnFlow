@@ -6,6 +6,7 @@ const config: Config = {
   testRegex: '.*\\.e2e-spec\\.ts$',
   transform: { '^.+\\.(t|j)s$': ['ts-jest', { tsconfig: 'tsconfig.json' }] },
   testEnvironment: 'node',
+  setupFiles: ['<rootDir>/test/setup-e2e-env.ts'],
   moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
   maxWorkers: 1,
 };

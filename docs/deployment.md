@@ -79,9 +79,11 @@ Edit `.env.production` and replace every example value. Required choices:
   characters when putting those passwords into `DATABASE_URL` or `REDIS_URL`.
 - Keep `COOKIE_SECURE=true`, `TRUST_PROXY=true`, and `SWAGGER_ENABLED=false`.
 - Set `SEARCH_PROVIDER=tavily` and `TAVILY_API_KEY` to enable hosted search.
-  Set `LLM_PROVIDER=openai` and `OPENAI_API_KEY` to enable hosted roadmap
-  synthesis. Keep mock providers until real keys, provider data-processing
-  requirements, rate limits, and usage budgets are approved.
+  For hosted roadmap synthesis, either set `LLM_PROVIDER=openai` with
+  `OPENAI_API_KEY`, or set `LLM_PROVIDER=cloudflare-workers-ai` with
+  `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. Keep mock providers until
+  real keys, provider data-processing requirements, rate limits, and usage
+  budgets are approved.
 
 The production environment file is ignored by Git. Never copy it into an image
 or commit it.

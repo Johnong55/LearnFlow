@@ -12,4 +12,12 @@ export default registerAs('ai', () => ({
     projectId: process.env.OPENAI_PROJECT_ID ?? '',
     organizationId: process.env.OPENAI_ORGANIZATION_ID ?? '',
   },
+  cloudflare: {
+    accountId: process.env.CLOUDFLARE_ACCOUNT_ID ?? '',
+    apiToken: process.env.CLOUDFLARE_API_TOKEN ?? '',
+    baseUrl: process.env.CLOUDFLARE_AI_BASE_URL ?? 'https://api.cloudflare.com/client/v4',
+    model: process.env.CLOUDFLARE_AI_MODEL ?? '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+    maxTokens: Number(process.env.CLOUDFLARE_AI_MAX_TOKENS ?? 8192),
+    temperature: Number(process.env.CLOUDFLARE_AI_TEMPERATURE ?? 0.2),
+  },
 }));
