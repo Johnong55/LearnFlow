@@ -113,7 +113,7 @@ describe('Phase 3 asynchronous roadmap pipeline (e2e)', () => {
           parse<{ versions: Array<{ version: number }> }>(response.text).data.versions[0]?.version,
         ).toBe(1);
       });
-  });
+  }, 20_000);
 
   async function waitForCompletion(jobId: string, authorization: string): Promise<JobView> {
     const deadline = Date.now() + 15000;

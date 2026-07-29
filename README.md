@@ -160,7 +160,63 @@ openssl rand -base64 48
 
 Required in production: `DATABASE_URL`, `REDIS_URL`, and distinct 32+ character `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` values. See `.env.example` for application, cookie, Argon2, rate-limit, and Docker PostgreSQL variables.
 
-Phase 3 defaults to deterministic `SEARCH_PROVIDER=mock` and `LLM_PROVIDER=mock`. Unsupported provider names fail during startup rather than silently falling back.
+Local development defaults to deterministic `SEARCH_PROVIDER=mock` and
+`LLM_PROVIDER=mock`. Tavily is available as the first hosted search adapter;
+OpenAI Responses API and Cloudflare Workers AI are available as hosted LLM
+adapters. Other unsupported provider names fail during startup rather than
+silently falling back.
+
+To enable Tavily, create an API key in its dashboard and update the environment:
+
+```dotenv
+SEARCH_PROVIDER=tavily
+TAVILY_API_KEY=replace-with-your-tavily-key
+TAVILY_SEARCH_DEPTH=basic
+```
+
+`basic` is the cost-conscious default. The adapter requests only ranked snippets
+and metadata, never raw page content, passes the configured source allowlist and
+blocklist to Tavily, and enforces the same domain policy again after receiving a
+response. Optional variables are documented in `.env.example`.
+
+To generate a real source-grounded roadmap with OpenAI Structured Outputs:
+
+```dotenv
+LLM_PROVIDER=openai
+OPENAI_API_KEY=replace-with-your-openai-api-key
+OPENAI_MODEL=gpt-5.6-sol
+OPENAI_REASONING_EFFORT=medium
+```
+
+The worker sends the goal, personalization constraints, source URLs, titles, and
+search snippets to the configured model. It sets `store=false`, uses a hashed
+user identifier for the safety identifier, handles refusals and incomplete
+responses, parses strict JSON Schema output, validates it again with Zod, and
+rejects any source URL that was not returned by search.
+
+To use a Cloudflare-hosted model instead of OpenAI, create a Workers AI API token
+with `Workers AI - Read` and `Workers AI - Edit` permissions, copy the account ID,
+and configure:
+
+```dotenv
+LLM_PROVIDER=cloudflare-workers-ai
+CLOUDFLARE_ACCOUNT_ID=replace-with-your-32-character-account-id
+CLOUDFLARE_API_TOKEN=replace-with-your-workers-ai-api-token
+CLOUDFLARE_AI_MODEL=@cf/meta/llama-3.3-70b-instruct-fp8-fast
+CLOUDFLARE_AI_MAX_TOKENS=8192
+CLOUDFLARE_AI_TEMPERATURE=0.2
+```
+
+The adapter calls Cloudflare's authenticated REST endpoint directly and requests
+non-streaming JSON Schema output. Workers AI does not guarantee schema compliance
+for every generation, so the existing application-level Zod validation remains
+mandatory. Invalid model output fails the job and is retried through BullMQ; it
+is never persisted as a roadmap.
+
+Roadmap discovery does not depend on finding one complete public roadmap. Each
+run searches for roadmaps, official documentation, learning paths, tutorials,
+exercises, assessments, and projects. The LLM can synthesize these fragments
+into ordered modules and original tasks while preserving source attribution.
 
 ## Local development
 
@@ -309,7 +365,7 @@ The session must first be started through `/sessions/:id/start`. A paused sessio
 - Password reset token creation and consumption are implemented, but outbound email delivery is intentionally not wired until the notification/email integration phase. In production, connect the reset issuance path to a transactional email worker before enabling this route publicly.
 - Email verification has persistence structure but no endpoint or mail delivery because verification workflow was requested as structure only in Phase 1.
 - Search uses snippets and metadata only. The mock provider never scrapes third-party pages.
-- Hosted search and LLM SDK adapters are not bundled yet; interfaces and configuration boundaries are ready for them.
+- Tavily search and OpenAI structured output are supported through provider-neutral adapters. Other hosted provider adapters are not bundled yet.
 - Scheduling uses deterministic hard constraints and preference scoring. Calendar-provider synchronization and richer energy-profile windows are not connected yet.
 - Adaptive scheduling is deterministic and runs daily using `ADAPTIVE_SCHEDULE_CRON`. BullMQ marks expired sessions missed, compares remaining task minutes with future planned minutes, queues only required replacements, writes an idempotent progress snapshot, and creates in-app alerts.
 - Notifications are persisted and readable through REST, but outbound push/email delivery is not connected yet.
@@ -318,4 +374,4 @@ The session must first be started through `/sessions/:id/start`. A paused sessio
 
 ## Recommended next task
 
-Deploy a staging instance, exercise the restore and rollback runbooks, then implement one real hosted search adapter and one real LLM adapter behind the existing provider interfaces.
+Deploy a staging instance, configure Tavily and OpenAI usage budgets, generate representative roadmaps, and evaluate topic coverage, source quality, latency, and cost before enabling hosted providers for all users.
