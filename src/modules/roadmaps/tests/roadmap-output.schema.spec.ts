@@ -1,5 +1,5 @@
 import { RoadmapDifficulty } from '@prisma/client';
-import { roadmapOutputSchema } from '../domain/roadmap-output.schema';
+import { roadmapJsonSchema, roadmapOutputSchema } from '../domain/roadmap-output.schema';
 
 describe('roadmap AI output validation', () => {
   const valid = {
@@ -57,5 +57,47 @@ describe('roadmap AI output validation', () => {
     const invalid = structuredClone(valid);
     invalid.milestones[0]!.modules[0]!.tasks.push(duplicateTask);
     expect(() => roadmapOutputSchema.parse(invalid)).toThrow('Task order values');
+  });
+
+  it('rejects duplicate normalized module topics', () => {
+    const invalid = structuredClone(valid);
+    invalid.milestones.push({
+      title: 'Applied practice',
+      order: 2,
+      estimatedHours: 5,
+      modules: [
+        {
+          ...structuredClone(valid.milestones[0]!.modules[0]!),
+          title: ' core   concepts ',
+        },
+      ],
+    });
+
+    expect(() => roadmapOutputSchema.parse(invalid)).toThrow('Module titles must be unique');
+  });
+
+  it('provides a strict nested JSON schema to the LLM provider', () => {
+    expect(roadmapJsonSchema.schema).toMatchObject({
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        milestones: {
+          type: 'array',
+          items: {
+            additionalProperties: false,
+            properties: {
+              modules: {
+                items: {
+                  additionalProperties: false,
+                  properties: {
+                    tasks: { items: { additionalProperties: false } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
   });
 });
