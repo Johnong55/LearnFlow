@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { LearningTaskStatus } from '@prisma/client';
+import { LearningTaskStatus } from '@/generated/prisma/client';
 import { AuditService } from '@/infrastructure/logging/audit.service';
 import { RoadmapGenerationService } from '@/modules/roadmap-jobs/services/roadmap-generation.service';
 import type { UpdateRoadmapDto } from '../dto/update-roadmap.dto';

@@ -1,4 +1,4 @@
-import type { SkillLevel, UserSkillType } from '@prisma/client';
+import type { SkillLevel, UserSkillType } from '@/generated/prisma/client';
 
 export interface UpsertUserSkillInput {
   name: string;

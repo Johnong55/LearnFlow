@@ -22,5 +22,6 @@
     "noUncheckedIndexedAccess": true,
     "resolveJsonModule": true,
     "paths": { "@/*": ["src/*"] }
-  }
+  },
+  "exclude": ["node_modules", "dist", "prisma.config.ts"]
 }

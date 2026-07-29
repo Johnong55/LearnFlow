@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GoalStatus, Prisma, RoadmapStatus, RoadmapVersionStatus } from '@prisma/client';
+import { GoalStatus, Prisma, RoadmapStatus, RoadmapVersionStatus } from '@/generated/prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import type { SearchResult } from '@/infrastructure/external/search/search-provider.interface';
 import type { RoadmapOutput } from '../domain/roadmap-output.schema';

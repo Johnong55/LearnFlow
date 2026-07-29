@@ -1,7 +1,7 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ReschedulingMode, StudySessionSource } from '@prisma/client';
+import { ReschedulingMode, StudySessionSource } from '@/generated/prisma/client';
 import type { Queue } from 'bullmq';
 import { randomUUID } from 'node:crypto';
 import { addLocalDays, localDateKey } from '@/common/utils/timezone.utils';

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { ConfigService } from '@nestjs/config';
 import {
   ConstraintPriority,
   DayOfWeek,
@@ -6,14 +7,16 @@ import {
   RoutineType,
   SkillLevel,
   UserSkillType,
-} from '@prisma/client';
+} from '@/generated/prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { GoalsRepository } from '@/modules/goals/repositories/goals.repository';
 import { RoutinesRepository } from '@/modules/routines/repositories/routines.repository';
 import { SkillsRepository } from '@/modules/skills/repositories/skills.repository';
 
 describe('Phase 2 repositories (integration)', () => {
-  const prisma = new PrismaService();
+  const prisma = new PrismaService(
+    new ConfigService({ database: { url: process.env.DATABASE_URL } }),
+  );
   const skills = new SkillsRepository(prisma);
   const goals = new GoalsRepository(prisma);
   const routines = new RoutinesRepository(prisma);

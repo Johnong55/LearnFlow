@@ -1,5 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { ConstraintPriority, DayOfWeek, RoutineType, UserSkillType } from '@prisma/client';
+import {
+  ConstraintPriority,
+  DayOfWeek,
+  RoutineType,
+  UserSkillType,
+} from '@/generated/prisma/client';
 import { AuditService } from '@/infrastructure/logging/audit.service';
 import { SkillsService } from '@/modules/skills/services/skills.service';
 import type { LearningPreferencesDto } from '../dto/learning-preferences.dto';

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CalendarEventType } from '@prisma/client';
+import { CalendarEventType } from '@/generated/prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,

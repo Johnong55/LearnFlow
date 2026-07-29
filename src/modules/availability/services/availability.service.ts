@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/generated/prisma/client';
 import { AuditService } from '@/infrastructure/logging/audit.service';
 import type { CreateAvailabilityRuleDto } from '../dto/create-availability-rule.dto';
 import type { UpdateAvailabilityRuleDto } from '../dto/update-availability-rule.dto';

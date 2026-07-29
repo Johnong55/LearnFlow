@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { GoalPriority, SkillLevel } from '@prisma/client';
+import { GoalPriority, SkillLevel } from '@/generated/prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,

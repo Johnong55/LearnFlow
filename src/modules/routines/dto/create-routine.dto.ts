@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { RoutineType } from '@prisma/client';
+import { RoutineType } from '@/generated/prisma/client';
 import {
   IsEnum,
   IsInt,

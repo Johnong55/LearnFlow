@@ -6,6 +6,7 @@ const config: Config = {
   testRegex: '.*\\.integration-spec\\.ts$',
   transform: { '^.+\\.(t|j)s$': ['ts-jest', { tsconfig: 'tsconfig.json' }] },
   testEnvironment: 'node',
+  setupFiles: ['<rootDir>/test/setup-integration-env.ts'],
   moduleNameMapper: { '^@/(.*)$': '<rootDir>/src/$1' },
   maxWorkers: 1,
 };

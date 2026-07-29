@@ -1,6 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/generated/prisma/client';
 import type { Job } from 'bullmq';
 import { addLocalDays, zonedDateTimeToUtc } from '@/common/utils/timezone.utils';
 import {

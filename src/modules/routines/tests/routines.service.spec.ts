@@ -1,5 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import { ConstraintPriority, DayOfWeek, RoutineType } from '@prisma/client';
+import { ConstraintPriority, DayOfWeek, RoutineType } from '@/generated/prisma/client';
 import { AuditService } from '@/infrastructure/logging/audit.service';
 import { RoutinesRepository } from '../repositories/routines.repository';
 import { RoutinesService } from '../services/routines.service';

@@ -1,4 +1,4 @@
-import type { ResourceContentType } from '@prisma/client';
+import type { ResourceContentType } from '@/generated/prisma/client';
 
 export interface SearchOptions {
   language?: string;

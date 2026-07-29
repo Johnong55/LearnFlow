@@ -1,5 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { LearningTaskStatus, Prisma, StudySessionStatus } from '@prisma/client';
+import { LearningTaskStatus, Prisma, StudySessionStatus } from '@/generated/prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import type { CompleteSessionDto } from '../dto/complete-session.dto';
 import type { TaskFeedbackDto } from '../dto/task-feedback.dto';

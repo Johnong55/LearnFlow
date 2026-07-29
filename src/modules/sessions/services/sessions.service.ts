@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ReschedulingMode } from '@prisma/client';
+import { ReschedulingMode } from '@/generated/prisma/client';
 import { AuditService } from '@/infrastructure/logging/audit.service';
 import { SchedulingService } from '@/modules/scheduling/services/scheduling.service';
 import { canTransition, transitionError } from '../domain/session-state.machine';

@@ -1,4 +1,4 @@
-import type { DayOfWeek } from '@prisma/client';
+import type { DayOfWeek } from '@/generated/prisma/client';
 
 const MINUTES_PER_DAY = 1440;
 const MINUTES_PER_WEEK = MINUTES_PER_DAY * 7;

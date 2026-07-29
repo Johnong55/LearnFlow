@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { DayOfWeek, LearningFormat, LearningStyle } from '@prisma/client';
+import { DayOfWeek, LearningFormat, LearningStyle } from '@/generated/prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsDate,

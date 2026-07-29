@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ResourceContentType } from '@prisma/client';
+import { ResourceContentType } from '@/generated/prisma/client';
 import { slugify } from '@/common/utils/slug.utils';
 import type { SearchOptions, SearchProvider, SearchResult } from './search-provider.interface';
 

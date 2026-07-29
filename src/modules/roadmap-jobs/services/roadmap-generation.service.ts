@@ -1,7 +1,7 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JobStatus, Prisma } from '@prisma/client';
+import { JobStatus, Prisma } from '@/generated/prisma/client';
 import type { Queue } from 'bullmq';
 import { randomUUID } from 'node:crypto';
 import { ROADMAP_QUEUE, ROADMAP_SEARCH_JOB } from '@/infrastructure/queue/roadmap-queue.constants';

@@ -11,7 +11,7 @@ import {
   RoadmapStatus,
   RoadmapVersionStatus,
   SkillLevel,
-} from '@prisma/client';
+} from '@/generated/prisma/client';
 import request from 'supertest';
 import { AppModule } from '@/app.module';
 import { addLocalDays } from '@/common/utils/timezone.utils';

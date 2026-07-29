@@ -8,6 +8,17 @@ updates:
     groups:
       development-dependencies:
         dependency-type: development
+    ignore:
+      # Upgrade these majors only as a coordinated toolchain change.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      - dependency-name: eslint
+        update-types: [version-update:semver-major]
+      - dependency-name: '@eslint/js'
+        update-types: [version-update:semver-major]
+      # Keep Node typings aligned with the Node 22 production runtime.
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:

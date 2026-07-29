@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { GoalStatus, Prisma } from '@prisma/client';
+import { GoalStatus, Prisma } from '@/generated/prisma/client';
 import { AuditService } from '@/infrastructure/logging/audit.service';
 import { SkillsService } from '@/modules/skills/services/skills.service';
 import type { CreateGoalDto } from '../dto/create-goal.dto';

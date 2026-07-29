@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/generated/prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { slugify } from '@/common/utils/slug.utils';
 import type { UpsertUserSkillInput } from '../interfaces/upsert-user-skill.interface';

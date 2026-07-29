@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { SkillLevel, UserSkillType } from '@prisma/client';
+import { SkillLevel, UserSkillType } from '@/generated/prisma/client';
 import { Type } from 'class-transformer';
 import {
   IsDate,

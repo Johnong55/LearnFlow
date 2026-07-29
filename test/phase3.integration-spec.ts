@@ -1,17 +1,20 @@
 import { randomUUID } from 'node:crypto';
+import { ConfigService } from '@nestjs/config';
 import {
   GoalPriority,
   JobStatus,
   ResourceContentType,
   RoadmapDifficulty,
   SkillLevel,
-} from '@prisma/client';
+} from '@/generated/prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import type { RoadmapOutput } from '@/modules/roadmaps/domain/roadmap-output.schema';
 import { RoadmapsRepository } from '@/modules/roadmaps/repositories/roadmaps.repository';
 
 describe('Phase 3 roadmap persistence idempotency (integration)', () => {
-  const prisma = new PrismaService();
+  const prisma = new PrismaService(
+    new ConfigService({ database: { url: process.env.DATABASE_URL } }),
+  );
   const repository = new RoadmapsRepository(prisma);
   const userId = randomUUID();
   const goalId = randomUUID();

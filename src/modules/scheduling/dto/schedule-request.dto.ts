@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { ReschedulingMode } from '@prisma/client';
+import { ReschedulingMode } from '@/generated/prisma/client';
 import { Type } from 'class-transformer';
 import { IsEnum, IsInt, IsOptional, IsUUID, Matches, Max, Min } from 'class-validator';
 

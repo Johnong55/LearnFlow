@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { NotificationStatus } from '@prisma/client';
+import { NotificationStatus } from '@/generated/prisma/client';
 import { IsEnum, IsOptional } from 'class-validator';
 
 export class ListNotificationsQueryDto {

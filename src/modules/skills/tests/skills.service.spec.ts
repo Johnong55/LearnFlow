@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { SkillLevel } from '@prisma/client';
+import { SkillLevel } from '@/generated/prisma/client';
 import { AuditService } from '@/infrastructure/logging/audit.service';
 import { SkillsRepository } from '../repositories/skills.repository';
 import { SkillsService } from '../services/skills.service';

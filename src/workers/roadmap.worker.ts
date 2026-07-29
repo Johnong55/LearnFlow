@@ -1,7 +1,7 @@
 import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JobStatus } from '@prisma/client';
+import { JobStatus } from '@/generated/prisma/client';
 import type { Job, Queue } from 'bullmq';
 import { createHash } from 'node:crypto';
 import { z, ZodError } from 'zod';

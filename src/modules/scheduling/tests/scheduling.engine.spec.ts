@@ -3,7 +3,7 @@ import {
   ReschedulingMode,
   RoadmapDifficulty,
   RoutineType,
-} from '@prisma/client';
+} from '@/generated/prisma/client';
 import { SchedulingEngine } from '../domain/scheduling.engine';
 import type { SchedulingInput, SchedulingTask } from '../domain/scheduling.types';
 
