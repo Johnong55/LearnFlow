@@ -9,7 +9,6 @@ x-logging: &default-logging
 x-app-security: &app-security
   init: true
   read_only: true
-  pids_limit: 256
   cap_drop:
     - ALL
   security_opt:
@@ -133,6 +132,7 @@ services:
       resources:
         limits:
           memory: 768m
+          pids: 256
 
   worker:
     image: learnflow-api:${APP_VERSION:-latest}
@@ -163,6 +163,7 @@ services:
       resources:
         limits:
           memory: 1g
+          pids: 256
 
   nginx:
     image: nginx:1.27-alpine
@@ -203,6 +204,7 @@ services:
       resources:
         limits:
           memory: 256m
+          pids: 128
 
   certbot:
     image: certbot/certbot:v3.2.0

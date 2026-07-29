@@ -7,6 +7,7 @@ export interface LlmRequest {
   systemPrompt: string;
   userPrompt: string;
   context?: Record<string, unknown>;
+  safetyIdentifier?: string;
 }
 
 export interface LlmProvider {
