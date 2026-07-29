@@ -1,4 +1,4 @@
-import type { ReschedulingMode, StudySessionSource } from '@prisma/client';
+import type { ReschedulingMode, StudySessionSource } from '@/generated/prisma/client';
 
 export interface ScheduleJobData {
   backgroundJobId: string;

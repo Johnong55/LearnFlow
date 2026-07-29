@@ -1,6 +1,6 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/generated/prisma/client';
 import type { Queue } from 'bullmq';
 import type Redis from 'ioredis';
 import { REDIS_CLIENT } from '@/infrastructure/cache/redis.constants';

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { JobStatus, Prisma } from '@prisma/client';
+import { JobStatus, Prisma } from '@/generated/prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import { SCHEDULE_QUEUE } from '@/infrastructure/queue/schedule-queue.constants';
 import type { ScheduleJobData } from '../interfaces/schedule-job.interface';

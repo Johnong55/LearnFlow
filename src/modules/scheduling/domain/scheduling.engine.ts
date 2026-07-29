@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { AvailabilityType, ConstraintPriority, ReschedulingMode } from '@prisma/client';
+import { AvailabilityType, ConstraintPriority, ReschedulingMode } from '@/generated/prisma/client';
 import {
   addLocalDays,
   eachLocalDate,

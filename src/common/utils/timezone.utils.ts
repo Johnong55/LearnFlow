@@ -1,4 +1,4 @@
-import type { DayOfWeek } from '@prisma/client';
+import type { DayOfWeek } from '@/generated/prisma/client';
 
 const weekdayMap: Record<string, DayOfWeek> = {
   Mon: 'MONDAY',

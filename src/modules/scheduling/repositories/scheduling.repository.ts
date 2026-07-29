@@ -5,7 +5,7 @@ import {
   SchedulingConflictStatus,
   StudySessionSource,
   StudySessionStatus,
-} from '@prisma/client';
+} from '@/generated/prisma/client';
 import { addLocalDays, localDateKey, zonedDateTimeToUtc } from '@/common/utils/timezone.utils';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 import type { SchedulePlan, SchedulingInput } from '../domain/scheduling.types';

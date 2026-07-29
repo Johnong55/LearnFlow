@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { NotificationStatus, NotificationType, StudySessionStatus } from '@prisma/client';
+import {
+  NotificationStatus,
+  NotificationType,
+  StudySessionStatus,
+} from '@/generated/prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 
 export interface AffectedSchedule {

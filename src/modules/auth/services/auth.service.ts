@@ -3,7 +3,7 @@ import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/co
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type { SignOptions } from 'jsonwebtoken';
-import type { UserRole } from '@prisma/client';
+import type { UserRole } from '@/generated/prisma/client';
 import { AuditService } from '@/infrastructure/logging/audit.service';
 import { AuthRepository } from '../repositories/auth.repository';
 import { PasswordService } from './password.service';

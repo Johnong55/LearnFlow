@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { DayOfWeek, WorkMode } from '@prisma/client';
+import { DayOfWeek, WorkMode } from '@/generated/prisma/client';
 import {
   ArrayNotEmpty,
   ArrayUnique,

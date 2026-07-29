@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@/generated/prisma/client';
 import { addLocalDays, localDateKey, zonedDateTimeToUtc } from '@/common/utils/timezone.utils';
 import { AuditService } from '@/infrastructure/logging/audit.service';
 import type { CalendarRangeQueryDto } from '../dto/calendar-range-query.dto';

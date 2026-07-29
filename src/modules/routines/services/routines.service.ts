@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ConstraintPriority } from '@prisma/client';
+import { ConstraintPriority } from '@/generated/prisma/client';
 import { recurringTimesOverlap } from '@/common/utils/time.utils';
 import { AuditService } from '@/infrastructure/logging/audit.service';
 import type { CreateRoutineDto } from '../dto/create-routine.dto';

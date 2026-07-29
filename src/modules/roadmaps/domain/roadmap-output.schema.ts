@@ -1,4 +1,4 @@
-import { LearningTaskType, RoadmapDifficulty } from '@prisma/client';
+import { LearningTaskType, RoadmapDifficulty } from '@/generated/prisma/client';
 import { z } from 'zod';
 
 const taskSchema = z.object({

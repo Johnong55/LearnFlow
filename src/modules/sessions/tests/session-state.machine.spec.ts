@@ -1,4 +1,4 @@
-import { StudySessionStatus } from '@prisma/client';
+import { StudySessionStatus } from '@/generated/prisma/client';
 import { canTransition } from '../domain/session-state.machine';
 
 describe('study session state machine', () => {

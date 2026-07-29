@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { SkillLevel, UserSkillType } from '@prisma/client';
+import { SkillLevel, UserSkillType } from '@/generated/prisma/client';
 import { AuditService } from '@/infrastructure/logging/audit.service';
 import type { CreateSkillDto } from '../dto/create-skill.dto';
 import type { UpdateSkillDto } from '../dto/update-skill.dto';

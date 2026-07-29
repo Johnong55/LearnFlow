@@ -1,4 +1,4 @@
-import { LearningTaskStatus, StudySessionStatus } from '@prisma/client';
+import { LearningTaskStatus, StudySessionStatus } from '@/generated/prisma/client';
 import { addLocalDays, localDateKey } from '@/common/utils/timezone.utils';
 
 const DAY_MS = 86_400_000;

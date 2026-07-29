@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { AvailabilityType, ConstraintPriority, DayOfWeek } from '@prisma/client';
+import { AvailabilityType, ConstraintPriority, DayOfWeek } from '@/generated/prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayNotEmpty,

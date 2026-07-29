@@ -1,6 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { ReschedulingMode } from '@prisma/client';
+import { ReschedulingMode } from '@/generated/prisma/client';
 import type { Job } from 'bullmq';
 import { ADAPTIVE_DAILY_JOB, SYSTEM_QUEUE } from '@/infrastructure/queue/queue.constants';
 import { ProgressService } from '@/modules/progress/services/progress.service';

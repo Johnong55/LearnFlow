@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ResourceContentType } from '@prisma/client';
+import { ResourceContentType } from '@/generated/prisma/client';
 import { z } from 'zod';
 import type { SearchOptions, SearchProvider, SearchResult } from './search-provider.interface';
 

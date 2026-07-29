@@ -1,4 +1,4 @@
-import { LearningTaskStatus, StudySessionStatus } from '@prisma/client';
+import { LearningTaskStatus, StudySessionStatus } from '@/generated/prisma/client';
 import { calculateProgress } from '../domain/progress-calculator';
 
 describe('calculateProgress', () => {

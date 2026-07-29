@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { GoalStatus } from '@prisma/client';
+import { GoalStatus } from '@/generated/prisma/client';
 import { IsEnum, IsOptional } from 'class-validator';
 
 export class ListGoalsQueryDto {

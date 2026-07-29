@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ConstraintPriority, Prisma, RoutineType } from '@prisma/client';
+import { ConstraintPriority, Prisma, RoutineType } from '@/generated/prisma/client';
 import { PrismaService } from '@/infrastructure/database/prisma.service';
 
 type StepField = 'personalProfile' | 'workSchedule' | 'lifeRoutine' | 'learningPreferences';

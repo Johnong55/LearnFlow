@@ -1,4 +1,4 @@
-import { StudySessionStatus } from '@prisma/client';
+import { StudySessionStatus } from '@/generated/prisma/client';
 
 export type SessionAction = 'START' | 'PAUSE' | 'COMPLETE' | 'SKIP';
 

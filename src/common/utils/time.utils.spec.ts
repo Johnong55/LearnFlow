@@ -1,4 +1,4 @@
-import { DayOfWeek } from '@prisma/client';
+import { DayOfWeek } from '@/generated/prisma/client';
 import { durationMinutes, recurringTimesOverlap } from './time.utils';
 
 describe('recurring time utilities', () => {

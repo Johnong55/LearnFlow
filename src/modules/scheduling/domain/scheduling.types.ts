@@ -5,7 +5,7 @@ import type {
   ReschedulingMode,
   RoadmapDifficulty,
   RoutineType,
-} from '@prisma/client';
+} from '@/generated/prisma/client';
 
 export interface TimeSlot {
   startAt: Date;

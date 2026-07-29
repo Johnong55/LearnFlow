@@ -1,4 +1,4 @@
-import { RoadmapDifficulty } from '@prisma/client';
+import { RoadmapDifficulty } from '@/generated/prisma/client';
 import { roadmapJsonSchema, roadmapOutputSchema } from '../domain/roadmap-output.schema';
 
 describe('roadmap AI output validation', () => {

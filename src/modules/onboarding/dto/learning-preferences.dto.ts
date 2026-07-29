@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { DayOfWeek, LearningFormat, SkillLevel } from '@prisma/client';
+import { DayOfWeek, LearningFormat, SkillLevel } from '@/generated/prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,

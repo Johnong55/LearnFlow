@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { ResourceContentType } from '@prisma/client';
+import { ResourceContentType } from '@/generated/prisma/client';
 import { TavilySearchProvider } from './tavily-search.provider';
 
 describe('TavilySearchProvider', () => {

@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ReschedulingMode } from '@prisma/client';
+import { ReschedulingMode } from '@/generated/prisma/client';
 import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class SkipSessionDto {

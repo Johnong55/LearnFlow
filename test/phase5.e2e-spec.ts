@@ -11,7 +11,7 @@ import {
   RoadmapVersionStatus,
   SkillLevel,
   StudySessionStatus,
-} from '@prisma/client';
+} from '@/generated/prisma/client';
 import type { Queue } from 'bullmq';
 import { randomUUID } from 'node:crypto';
 import type { Server } from 'node:http';
