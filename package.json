@@ -1,6 +1,6 @@
 {
   "name": "learnflow-backend",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "AI-powered learning roadmap and life scheduling backend",
   "license": "UNLICENSED",

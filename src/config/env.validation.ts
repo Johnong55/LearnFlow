@@ -51,6 +51,18 @@ export const environmentSchema = Joi.object({
   SEARCH_TIMEOUT_MS: Joi.number().integer().min(1000).max(120000).default(30000),
   SEARCH_DOMAIN_ALLOWLIST: Joi.string().allow('').default(''),
   SEARCH_DOMAIN_BLOCKLIST: Joi.string().allow('').default(''),
+  TAVILY_API_KEY: Joi.when('SEARCH_PROVIDER', {
+    is: 'tavily',
+    then: Joi.string().min(10).required(),
+    otherwise: Joi.string().allow('').optional(),
+  }),
+  TAVILY_BASE_URL: Joi.string()
+    .uri({ scheme: ['https'] })
+    .default('https://api.tavily.com'),
+  TAVILY_SEARCH_DEPTH: Joi.string()
+    .valid('basic', 'advanced', 'fast', 'ultra-fast')
+    .default('basic'),
+  TAVILY_PROJECT_ID: Joi.string().max(255).allow('').optional(),
   ROADMAP_JOB_ATTEMPTS: Joi.number().integer().min(1).max(10).default(3),
   ROADMAP_JOB_BACKOFF_MS: Joi.number().integer().min(100).max(60000).default(1000),
   SCHEDULE_JOB_ATTEMPTS: Joi.number().integer().min(1).max(10).default(3),

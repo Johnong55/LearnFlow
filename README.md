@@ -160,7 +160,23 @@ openssl rand -base64 48
 
 Required in production: `DATABASE_URL`, `REDIS_URL`, and distinct 32+ character `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET` values. See `.env.example` for application, cookie, Argon2, rate-limit, and Docker PostgreSQL variables.
 
-Phase 3 defaults to deterministic `SEARCH_PROVIDER=mock` and `LLM_PROVIDER=mock`. Unsupported provider names fail during startup rather than silently falling back.
+Local development defaults to deterministic `SEARCH_PROVIDER=mock` and
+`LLM_PROVIDER=mock`. Tavily is available as the first hosted search adapter;
+other unsupported provider names fail during startup rather than silently
+falling back.
+
+To enable Tavily, create an API key in its dashboard and update the environment:
+
+```dotenv
+SEARCH_PROVIDER=tavily
+TAVILY_API_KEY=replace-with-your-tavily-key
+TAVILY_SEARCH_DEPTH=basic
+```
+
+`basic` is the cost-conscious default. The adapter requests only ranked snippets
+and metadata, never raw page content, passes the configured source allowlist and
+blocklist to Tavily, and enforces the same domain policy again after receiving a
+response. Optional variables are documented in `.env.example`.
 
 ## Local development
 
@@ -309,7 +325,7 @@ The session must first be started through `/sessions/:id/start`. A paused sessio
 - Password reset token creation and consumption are implemented, but outbound email delivery is intentionally not wired until the notification/email integration phase. In production, connect the reset issuance path to a transactional email worker before enabling this route publicly.
 - Email verification has persistence structure but no endpoint or mail delivery because verification workflow was requested as structure only in Phase 1.
 - Search uses snippets and metadata only. The mock provider never scrapes third-party pages.
-- Hosted search and LLM SDK adapters are not bundled yet; interfaces and configuration boundaries are ready for them.
+- Tavily search is supported through a provider-neutral adapter. Other hosted search providers and hosted LLM adapters are not bundled yet.
 - Scheduling uses deterministic hard constraints and preference scoring. Calendar-provider synchronization and richer energy-profile windows are not connected yet.
 - Adaptive scheduling is deterministic and runs daily using `ADAPTIVE_SCHEDULE_CRON`. BullMQ marks expired sessions missed, compares remaining task minutes with future planned minutes, queues only required replacements, writes an idempotent progress snapshot, and creates in-app alerts.
 - Notifications are persisted and readable through REST, but outbound push/email delivery is not connected yet.
@@ -318,4 +334,4 @@ The session must first be started through `/sessions/:id/start`. A paused sessio
 
 ## Recommended next task
 
-Deploy a staging instance, exercise the restore and rollback runbooks, then implement one real hosted search adapter and one real LLM adapter behind the existing provider interfaces.
+Deploy a staging instance, exercise the restore and rollback runbooks, then implement the first real LLM adapter behind the existing provider interface.

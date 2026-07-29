@@ -12,4 +12,10 @@ export default registerAs('search', () => ({
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean),
+  tavily: {
+    apiKey: process.env.TAVILY_API_KEY ?? '',
+    baseUrl: process.env.TAVILY_BASE_URL ?? 'https://api.tavily.com',
+    searchDepth: process.env.TAVILY_SEARCH_DEPTH ?? 'basic',
+    projectId: process.env.TAVILY_PROJECT_ID ?? '',
+  },
 }));

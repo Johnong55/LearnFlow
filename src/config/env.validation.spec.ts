@@ -15,4 +15,21 @@ describe('environment validation', () => {
     const result = environmentSchema.validate({ ...base, NODE_ENV: 'test' });
     expect(result.error).toBeUndefined();
   });
+
+  it('requires an API key when Tavily is selected', () => {
+    const missing = environmentSchema.validate({
+      ...base,
+      NODE_ENV: 'test',
+      SEARCH_PROVIDER: 'tavily',
+    });
+    const configured = environmentSchema.validate({
+      ...base,
+      NODE_ENV: 'test',
+      SEARCH_PROVIDER: 'tavily',
+      TAVILY_API_KEY: 'tvly-valid-test-key',
+    });
+
+    expect(missing.error).toBeDefined();
+    expect(configured.error).toBeUndefined();
+  });
 });
