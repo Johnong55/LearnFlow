@@ -80,3 +80,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Validate production configuration
+        run: ./scripts/validate-production.sh .env.production.example
+
+      - name: Build production image
+        run: docker build --target production --tag learnflow-api:ci .

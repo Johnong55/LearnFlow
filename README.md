@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Johnong55/LearnFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/Johnong55/LearnFlow/actions/workflows/ci.yml)
 
-Production-oriented Phase 1–5 backend for an AI-powered learning roadmap and life scheduling service. It is a strict-TypeScript modular NestJS application backed by PostgreSQL/Prisma and Redis/BullMQ.
+Production-oriented Phase 1–6 backend for an AI-powered learning roadmap and life scheduling service. It is a strict-TypeScript modular NestJS application backed by PostgreSQL/Prisma and Redis/BullMQ.
 
 ## Phase 1 architecture
 
@@ -90,63 +90,64 @@ All timestamps are stored as PostgreSQL `TIMESTAMPTZ` values and handled as UTC 
 
 All business endpoints are under `/api/v1`.
 
-| Method | Path | Authentication | Purpose |
-|---|---|---:|---|
-| POST | `/auth/register` | Public | Register and receive tokens |
-| POST | `/auth/login` | Public | Sign in and receive tokens |
-| POST | `/auth/refresh` | Public | Rotate a refresh token |
-| POST | `/auth/logout` | Bearer | Revoke a refresh token |
-| POST | `/auth/forgot-password` | Public | Create a reset request without account disclosure |
-| POST | `/auth/reset-password` | Public | Consume a one-time reset token |
-| GET | `/auth/me` | Bearer | Read authenticated identity |
-| GET | `/users/me` | Bearer | Read profile and preferences |
-| PATCH | `/users/me` | Bearer | Update profile and preferences |
-| DELETE | `/users/me` | Bearer | Soft-delete account and revoke sessions |
-| GET/PUT | `/onboarding/*` | Bearer | Read and save resumable onboarding steps |
-| POST | `/onboarding/complete` | Bearer | Validate, materialize routines/skills, and complete onboarding |
-| GET/POST | `/skills` | Bearer | List and create current-user skills |
-| GET/PATCH/DELETE | `/skills/:id` | Bearer | Read, update, or soft-delete an owned skill |
-| GET/POST | `/goals` | Bearer | List/filter and create learning goals |
-| GET/PATCH/DELETE | `/goals/:id` | Bearer | Read, update, or soft-delete an owned goal |
-| POST | `/goals/:id/pause` | Bearer | Pause an active/analyzing goal |
-| POST | `/goals/:id/resume` | Bearer | Resume a paused goal |
-| GET/POST | `/routines` | Bearer | List and create recurring routines |
-| PATCH/DELETE | `/routines/:id` | Bearer | Update or soft-delete an owned routine |
-| GET/POST | `/availability-rules` | Bearer | List and create availability rules |
-| PATCH/DELETE | `/availability-rules/:id` | Bearer | Update or soft-delete an owned availability rule |
-| POST | `/goals/:id/generate-roadmap` | Bearer | Queue asynchronous roadmap generation |
-| GET | `/roadmap-jobs/:jobId` | Bearer | Read generation stage, progress, result, or error |
-| POST | `/roadmap-jobs/:jobId/retry` | Bearer | Retry a failed generation job |
-| GET | `/roadmaps` | Bearer | List owned roadmaps and latest versions |
-| GET/PATCH | `/roadmaps/:id` | Bearer | Read a selected version or update metadata |
-| POST | `/roadmaps/:id/activate` | Bearer | Activate the latest version |
-| POST | `/roadmaps/:id/regenerate` | Bearer | Queue a new immutable version |
-| POST | `/roadmaps/:id/archive` | Bearer | Archive a roadmap |
-| GET | `/roadmaps/:id/sources` | Bearer | Read ranked sources for a version |
-| GET | `/roadmaps/:id/progress` | Bearer | Read deterministic task completion summary |
-| GET | `/calendar` | Bearer | List events and study sessions in a UTC range |
-| GET | `/calendar/day` | Bearer | Read one day in the user's timezone |
-| GET | `/calendar/week` | Bearer | Read seven days in the user's timezone |
-| POST | `/calendar/events` | Bearer | Create a fixed or flexible event |
-| PATCH/DELETE | `/calendar/events/:id` | Bearer | Update or soft-delete an owned event |
-| POST | `/schedules/preview` | Bearer | Calculate a schedule without persistence |
-| POST | `/schedules/generate` | Bearer | Queue deterministic schedule persistence |
-| POST | `/schedules/rebalance` | Bearer | Queue schedule recalculation |
-| GET | `/schedules/conflicts` | Bearer | List unresolved placement conflicts |
-| GET | `/schedules/jobs/:jobId` | Bearer | Read schedule worker progress and result |
-| POST | `/sessions/:id/start` | Bearer | Start or resume a study session |
-| POST | `/sessions/:id/pause` | Bearer | Pause an in-progress study session |
-| POST | `/sessions/:id/complete` | Bearer | Complete a session and record actual duration/feedback |
-| POST | `/sessions/:id/skip` | Bearer | Skip a session and queue adaptive rebalancing |
-| POST | `/tasks/:id/complete` | Bearer | Manually complete a learning task |
-| POST | `/tasks/:id/feedback` | Bearer | Record difficulty, focus, duration, and notes |
-| GET | `/progress/overview` | Bearer | Read aggregate and per-goal progress |
-| GET | `/progress/weekly` | Bearer | Read seven-day consistency and adherence |
-| GET | `/progress/goals/:goalId` | Bearer | Read detailed goal pace and estimated completion |
-| GET | `/notifications` | Bearer | List owned in-app notifications |
-| POST | `/notifications/:id/read` | Bearer | Mark a notification as read |
+| Method           | Path                          | Authentication | Purpose                                                        |
+| ---------------- | ----------------------------- | -------------: | -------------------------------------------------------------- |
+| POST             | `/auth/register`              |         Public | Register and receive tokens                                    |
+| POST             | `/auth/login`                 |         Public | Sign in and receive tokens                                     |
+| POST             | `/auth/refresh`               |         Public | Rotate a refresh token                                         |
+| POST             | `/auth/logout`                |         Bearer | Revoke a refresh token                                         |
+| POST             | `/auth/forgot-password`       |         Public | Create a reset request without account disclosure              |
+| POST             | `/auth/reset-password`        |         Public | Consume a one-time reset token                                 |
+| GET              | `/auth/me`                    |         Bearer | Read authenticated identity                                    |
+| GET              | `/users/me`                   |         Bearer | Read profile and preferences                                   |
+| PATCH            | `/users/me`                   |         Bearer | Update profile and preferences                                 |
+| DELETE           | `/users/me`                   |         Bearer | Soft-delete account and revoke sessions                        |
+| GET/PUT          | `/onboarding/*`               |         Bearer | Read and save resumable onboarding steps                       |
+| POST             | `/onboarding/complete`        |         Bearer | Validate, materialize routines/skills, and complete onboarding |
+| GET/POST         | `/skills`                     |         Bearer | List and create current-user skills                            |
+| GET/PATCH/DELETE | `/skills/:id`                 |         Bearer | Read, update, or soft-delete an owned skill                    |
+| GET/POST         | `/goals`                      |         Bearer | List/filter and create learning goals                          |
+| GET/PATCH/DELETE | `/goals/:id`                  |         Bearer | Read, update, or soft-delete an owned goal                     |
+| POST             | `/goals/:id/pause`            |         Bearer | Pause an active/analyzing goal                                 |
+| POST             | `/goals/:id/resume`           |         Bearer | Resume a paused goal                                           |
+| GET/POST         | `/routines`                   |         Bearer | List and create recurring routines                             |
+| PATCH/DELETE     | `/routines/:id`               |         Bearer | Update or soft-delete an owned routine                         |
+| GET/POST         | `/availability-rules`         |         Bearer | List and create availability rules                             |
+| PATCH/DELETE     | `/availability-rules/:id`     |         Bearer | Update or soft-delete an owned availability rule               |
+| POST             | `/goals/:id/generate-roadmap` |         Bearer | Queue asynchronous roadmap generation                          |
+| GET              | `/roadmap-jobs/:jobId`        |         Bearer | Read generation stage, progress, result, or error              |
+| POST             | `/roadmap-jobs/:jobId/retry`  |         Bearer | Retry a failed generation job                                  |
+| GET              | `/roadmaps`                   |         Bearer | List owned roadmaps and latest versions                        |
+| GET/PATCH        | `/roadmaps/:id`               |         Bearer | Read a selected version or update metadata                     |
+| POST             | `/roadmaps/:id/activate`      |         Bearer | Activate the latest version                                    |
+| POST             | `/roadmaps/:id/regenerate`    |         Bearer | Queue a new immutable version                                  |
+| POST             | `/roadmaps/:id/archive`       |         Bearer | Archive a roadmap                                              |
+| GET              | `/roadmaps/:id/sources`       |         Bearer | Read ranked sources for a version                              |
+| GET              | `/roadmaps/:id/progress`      |         Bearer | Read deterministic task completion summary                     |
+| GET              | `/calendar`                   |         Bearer | List events and study sessions in a UTC range                  |
+| GET              | `/calendar/day`               |         Bearer | Read one day in the user's timezone                            |
+| GET              | `/calendar/week`              |         Bearer | Read seven days in the user's timezone                         |
+| POST             | `/calendar/events`            |         Bearer | Create a fixed or flexible event                               |
+| PATCH/DELETE     | `/calendar/events/:id`        |         Bearer | Update or soft-delete an owned event                           |
+| POST             | `/schedules/preview`          |         Bearer | Calculate a schedule without persistence                       |
+| POST             | `/schedules/generate`         |         Bearer | Queue deterministic schedule persistence                       |
+| POST             | `/schedules/rebalance`        |         Bearer | Queue schedule recalculation                                   |
+| GET              | `/schedules/conflicts`        |         Bearer | List unresolved placement conflicts                            |
+| GET              | `/schedules/jobs/:jobId`      |         Bearer | Read schedule worker progress and result                       |
+| POST             | `/sessions/:id/start`         |         Bearer | Start or resume a study session                                |
+| POST             | `/sessions/:id/pause`         |         Bearer | Pause an in-progress study session                             |
+| POST             | `/sessions/:id/complete`      |         Bearer | Complete a session and record actual duration/feedback         |
+| POST             | `/sessions/:id/skip`          |         Bearer | Skip a session and queue adaptive rebalancing                  |
+| POST             | `/tasks/:id/complete`         |         Bearer | Manually complete a learning task                              |
+| POST             | `/tasks/:id/feedback`         |         Bearer | Record difficulty, focus, duration, and notes                  |
+| GET              | `/progress/overview`          |         Bearer | Read aggregate and per-goal progress                           |
+| GET              | `/progress/weekly`            |         Bearer | Read seven-day consistency and adherence                       |
+| GET              | `/progress/goals/:goalId`     |         Bearer | Read detailed goal pace and estimated completion               |
+| GET              | `/notifications`              |         Bearer | List owned in-app notifications                                |
+| POST             | `/notifications/:id/read`     |         Bearer | Mark a notification as read                                    |
 
 Operational endpoints are `/health`, `/health/live`, and `/health/ready`. Swagger UI is at `/docs`.
+Swagger is enabled by default outside production and disabled by default in production.
 
 ## Environment
 
@@ -194,6 +195,21 @@ To stop containers without deleting database data:
 
 ```bash
 docker compose down
+```
+
+## Production deployment
+
+Phase 6 provides a multi-stage, non-root image; isolated PostgreSQL and Redis;
+separate API, worker, and migration containers; Nginx TLS termination; Certbot;
+health checks; resource limits; log rotation; and backup/restore automation.
+
+Use the complete [VPS deployment runbook](docs/deployment.md). Validate production
+configuration locally before a release:
+
+```bash
+cp .env.production.example .env.production
+# Replace every example domain, password, and secret first.
+./scripts/validate-production.sh .env.production
 ```
 
 ## Prisma commands
@@ -297,9 +313,9 @@ The session must first be started through `/sessions/:id/start`. A paused sessio
 - Scheduling uses deterministic hard constraints and preference scoring. Calendar-provider synchronization and richer energy-profile windows are not connected yet.
 - Adaptive scheduling is deterministic and runs daily using `ADAPTIVE_SCHEDULE_CRON`. BullMQ marks expired sessions missed, compares remaining task minutes with future planned minutes, queues only required replacements, writes an idempotent progress snapshot, and creates in-app alerts.
 - Notifications are persisted and readable through REST, but outbound push/email delivery is not connected yet.
-- TLS termination, Nginx, production Compose, backups, restore, and VPS runbooks belong to Phase 6.
 - Integration and e2e tests that exercise PostgreSQL/Redis require those services. Unit tests do not.
+- The Phase 6 deployment targets a single VPS. It does not provide zero-downtime multi-host orchestration, managed database failover, or built-in metrics export.
 
 ## Recommended next task
 
-Proceed with Phase 6: production Compose and Nginx, HTTPS/Let's Encrypt runbook, backups/restoration, deployment rollback, monitoring preparation, and final security hardening.
+Deploy a staging instance, exercise the restore and rollback runbooks, then implement one real hosted search adapter and one real LLM adapter behind the existing provider interfaces.

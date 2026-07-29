@@ -1,0 +1,17 @@
+[Unit]
+Description=LearnFlow PostgreSQL backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=learnflow
+Group=learnflow
+WorkingDirectory=/opt/learnflow
+ExecStart=/opt/learnflow/scripts/backup.sh /opt/learnflow/.env.production
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+PrivateTmp=true
+NoNewPrivileges=true
+

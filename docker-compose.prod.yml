@@ -1,0 +1,235 @@
+name: ${COMPOSE_PROJECT_NAME:-learnflow}
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '5'
+
+x-app-security: &app-security
+  init: true
+  read_only: true
+  pids_limit: 256
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env.production}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env.production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    shm_size: 256mb
+    stop_grace_period: 1m
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  redis:
+    image: redis:7.4-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.production}
+    command:
+      - redis-server
+      - --appendonly
+      - 'yes'
+      - --appendfsync
+      - everysec
+      - --requirepass
+      - ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.production}
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ['CMD-SHELL', 'REDISCLI_AUTH=$${REDIS_PASSWORD} redis-cli ping | grep PONG']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  migrate:
+    image: learnflow-migrate:${APP_VERSION:-latest}
+    build:
+      context: .
+      target: migration
+    env_file: ${APP_ENV_FILE:-.env.production}
+    command: ['npm', 'run', 'prisma:deploy']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    restart: 'no'
+    logging: *default-logging
+
+  api:
+    image: learnflow-api:${APP_VERSION:-latest}
+    build:
+      context: .
+      target: production
+    env_file: ${APP_ENV_FILE:-.env.production}
+    command: ['node', 'dist/main.js']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    expose:
+      - '3000'
+    networks:
+      - frontend
+      - backend
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    stop_grace_period: 30s
+    logging: *default-logging
+    <<: *app-security
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+
+  worker:
+    image: learnflow-api:${APP_VERSION:-latest}
+    build:
+      context: .
+      target: production
+    env_file: ${APP_ENV_FILE:-.env.production}
+    command: ['node', 'dist/worker.js']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+      - egress
+    healthcheck:
+      test: ['CMD', 'node', 'scripts/worker-healthcheck.cjs']
+      interval: 30s
+      timeout: 8s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    stop_grace_period: 1m
+    logging: *default-logging
+    <<: *app-security
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  nginx:
+    image: nginx:1.27-alpine
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env.production}
+      NGINX_ENVSUBST_FILTER: DOMAIN
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/templates:/etc/nginx/templates:ro
+      - certbot_certs:/etc/letsencrypt:ro
+      - certbot_webroot:/var/www/certbot:ro
+    networks:
+      - frontend
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1/nginx-health']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+      - /var/cache/nginx:size=32m
+      - /var/run:size=8m
+      - /etc/nginx/conf.d:size=8m
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    stop_grace_period: 15s
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  certbot:
+    image: certbot/certbot:v3.2.0
+    profiles:
+      - maintenance
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_webroot:/var/www/certbot
+    command: ['renew', '--webroot', '--webroot-path=/var/www/certbot', '--quiet']
+    networks:
+      - frontend
+    security_opt:
+      - no-new-privileges:true
+    logging: *default-logging
+
+networks:
+  frontend:
+  egress:
+  backend:
+    internal: true
+
+volumes:
+  postgres_data:
+    name: ${COMPOSE_PROJECT_NAME:-learnflow}_postgres_data
+  redis_data:
+    name: ${COMPOSE_PROJECT_NAME:-learnflow}_redis_data
+  certbot_certs:
+    name: ${COMPOSE_PROJECT_NAME:-learnflow}_certbot_certs
+  certbot_webroot:
+    name: ${COMPOSE_PROJECT_NAME:-learnflow}_certbot_webroot

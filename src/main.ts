@@ -43,20 +43,22 @@ async function bootstrap(): Promise<void> {
   });
   app.enableShutdownHooks();
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('LearnFlow API')
-    .setDescription('AI-powered personal learning roadmap and life scheduling API')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swaggerConfig), {
-    swaggerOptions: { persistAuthorization: true },
-  });
+  if (config.get<boolean>('app.swaggerEnabled', true)) {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('LearnFlow API')
+      .setDescription('AI-powered personal learning roadmap and life scheduling API')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swaggerConfig), {
+      swaggerOptions: { persistAuthorization: true },
+    });
+  }
 
   const port = config.get<number>('app.port', 3000);
   const host = config.get<string>('app.host', '0.0.0.0');
   await app.listen(port, host);
-  Logger.log(`API listening on http://${host}:${port}; Swagger at /docs`, 'Bootstrap');
+  Logger.log(`API listening on http://${host}:${port}`, 'Bootstrap');
 }
 
 void bootstrap();

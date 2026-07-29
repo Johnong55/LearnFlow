@@ -11,6 +11,7 @@ export const environmentSchema = Joi.object({
   CORS_ORIGINS: Joi.string().default('http://localhost:3001'),
   TRUST_PROXY: Joi.boolean().truthy('true').falsy('false').default(false),
   REQUEST_BODY_LIMIT: Joi.string().default('1mb'),
+  SWAGGER_ENABLED: Joi.boolean().truthy('true').falsy('false').optional(),
   DATABASE_URL: Joi.string()
     .uri({ scheme: ['postgresql', 'postgres'] })
     .required(),
