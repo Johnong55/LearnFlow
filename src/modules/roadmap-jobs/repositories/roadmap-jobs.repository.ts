@@ -30,7 +30,7 @@ export class RoadmapJobsRepository {
     });
   }
 
-  create(id: string, externalId: string, userId: string, goalId: string) {
+  create(id: string, externalId: string, userId: string, goalId: string, runId: string) {
     return this.prisma.backgroundJob.create({
       data: {
         id,
@@ -41,19 +41,26 @@ export class RoadmapJobsRepository {
         status: JobStatus.QUEUED,
         progress: 0,
         statusMessage: 'Roadmap generation queued.',
-        payload: { goalId },
+        payload: { goalId, runId },
       },
     });
   }
 
-  updateStage(id: string, status: JobStatus, progress: number, statusMessage: string) {
+  async updateStage(id: string, status: JobStatus, progress: number, statusMessage: string) {
+    const current = await this.prisma.backgroundJob.findUnique({
+      where: { id },
+      select: { progress: true },
+    });
     return this.prisma.backgroundJob.update({
       where: { id },
       data: {
         status,
-        progress,
+        progress: Math.max(current?.progress ?? 0, progress),
         statusMessage,
         startedAt: status === JobStatus.RUNNING ? new Date() : undefined,
+        completedAt: status === JobStatus.RUNNING ? null : undefined,
+        errorCode: status === JobStatus.RUNNING ? null : undefined,
+        errorMessage: status === JobStatus.RUNNING ? null : undefined,
       },
     });
   }
@@ -86,7 +93,7 @@ export class RoadmapJobsRepository {
     });
   }
 
-  resetForRetry(id: string) {
+  resetForRetry(id: string, goalId: string, runId: string) {
     return this.prisma.backgroundJob.update({
       where: { id },
       data: {
@@ -99,6 +106,7 @@ export class RoadmapJobsRepository {
         startedAt: null,
         completedAt: null,
         attempts: { increment: 1 },
+        payload: { goalId, runId },
       },
     });
   }

@@ -99,6 +99,26 @@ describe('CloudflareWorkersAiProvider', () => {
     });
   });
 
+  it('uses the configured fast model for FAST inference requests', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          result: { response: { title: 'Fast blueprint' } },
+          errors: [],
+          messages: [],
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await provider().generateStructuredOutput({ ...input, inferenceProfile: 'FAST' }, schema);
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'https://api.cloudflare.com/client/v4/accounts/0123456789abcdef0123456789abcdef/ai/run/@cf/meta/llama-3.1-8b-instruct-fast',
+    );
+  });
+
   it('rejects invalid JSON returned by the model', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(
       new Response(
@@ -128,6 +148,23 @@ describe('CloudflareWorkersAiProvider', () => {
     await expect(provider().generateStructuredOutput(input, schema)).rejects.toThrow(
       'Cloudflare Workers AI request failed with HTTP 429 (ray safe-ray-123).',
     );
+  });
+
+  it('reports a sanitized provider code for an HTTP error without exposing its message', async () => {
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ errors: [{ code: 4005, message: 'prompt or provider detail' }] }),
+          { status: 400, headers: { 'cf-ray': 'safe-ray-400' } },
+        ),
+      );
+
+    const promise = provider().generateStructuredOutput(input, schema);
+    await expect(promise).rejects.toThrow(
+      'Cloudflare Workers AI request failed with HTTP 400, code 4005 (ray safe-ray-400).',
+    );
+    await expect(promise).rejects.not.toThrow('prompt or provider detail');
   });
 
   it('reports a sanitized Cloudflare error code from a successful HTTP response', async () => {

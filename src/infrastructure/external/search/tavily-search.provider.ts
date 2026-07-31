@@ -8,6 +8,7 @@ const tavilyResultSchema = z.object({
   title: z.string().min(1),
   url: z.url(),
   content: z.string().default(''),
+  raw_content: z.string().nullish(),
   score: z.number().finite().default(0),
   published_date: z.string().nullish(),
 });
@@ -61,7 +62,7 @@ export class TavilySearchProvider implements SearchProvider {
           max_results: limit,
           topic: 'general',
           include_answer: false,
-          include_raw_content: false,
+          include_raw_content: 'markdown',
           include_images: false,
           include_favicon: false,
           include_domains: allowlist,
@@ -121,7 +122,12 @@ export class TavilySearchProvider implements SearchProvider {
     return {
       title: title.slice(0, 500),
       url: canonicalUrl,
-      description: result.content.replace(/\s+/g, ' ').trim().slice(0, 4000),
+      description: [result.content, result.raw_content]
+        .filter((value): value is string => Boolean(value?.trim()))
+        .join('\n\n')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 12000),
       sourceDomain,
       publishedAt: this.validDate(result.published_date),
       retrievedAt,

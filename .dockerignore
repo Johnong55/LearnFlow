@@ -8,3 +8,4 @@ src/generated/prisma
 *.log
 backups
 docs
+frontend

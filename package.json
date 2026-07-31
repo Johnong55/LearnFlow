@@ -5,6 +5,10 @@
   "description": "AI-powered learning roadmap and life scheduling backend",
   "license": "UNLICENSED",
   "scripts": {
+    "dev": "node scripts/dev-all.mjs",
+    "dev:api": "npm run start:dev",
+    "dev:worker": "npm run start:worker:dev",
+    "dev:frontend": "npm --prefix frontend run dev",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" && prisma format",
     "start": "nest start",

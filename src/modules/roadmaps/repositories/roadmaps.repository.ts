@@ -148,6 +148,7 @@ export class RoadmapsRepository {
           sourceIds.set(source.url, created.id);
         }
 
+        let previousTaskId: string | undefined;
         for (const milestoneData of output.milestones) {
           const milestone = await transaction.roadmapMilestone.create({
             data: {
@@ -168,17 +169,16 @@ export class RoadmapsRepository {
                 estimatedHours: moduleData.estimatedHours,
               },
             });
-            const tasks: string[] = [];
             for (const taskData of moduleData.tasks) {
               const task = await transaction.learningTask.create({
                 data: { moduleId: module.id, ...taskData },
               });
-              tasks.push(task.id);
-            }
-            for (let index = 1; index < tasks.length; index += 1) {
-              await transaction.taskDependency.create({
-                data: { taskId: tasks[index]!, prerequisiteId: tasks[index - 1]! },
-              });
+              if (previousTaskId) {
+                await transaction.taskDependency.create({
+                  data: { taskId: task.id, prerequisiteId: previousTaskId },
+                });
+              }
+              previousTaskId = task.id;
             }
             for (const url of moduleData.sourceUrls) {
               const sourceId = sourceIds.get(url);
@@ -191,9 +191,24 @@ export class RoadmapsRepository {
         }
 
         const nextStatus = roadmap.activeVersionNumber ? RoadmapStatus.ACTIVE : RoadmapStatus.DRAFT;
+        if (roadmap.activeVersionNumber) {
+          await transaction.roadmapVersion.updateMany({
+            where: { roadmapId: roadmap.id, status: RoadmapVersionStatus.ACTIVE },
+            data: { status: RoadmapVersionStatus.ARCHIVED },
+          });
+          await transaction.roadmapVersion.update({
+            where: { id: version.id },
+            data: { status: RoadmapVersionStatus.ACTIVE },
+          });
+        }
         await transaction.roadmap.update({
           where: { id: roadmap.id },
-          data: { title: output.title, currentVersionNumber: versionNumber, status: nextStatus },
+          data: {
+            title: output.title,
+            currentVersionNumber: versionNumber,
+            activeVersionNumber: roadmap.activeVersionNumber ? versionNumber : undefined,
+            status: nextStatus,
+          },
         });
         await transaction.learningGoal.update({
           where: { id: goalId },

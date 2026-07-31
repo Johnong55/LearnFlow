@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#FFFDF7"/>
+  <circle cx="1080" cy="70" r="210" fill="#E7F8E9"/>
+  <circle cx="100" cy="600" r="240" fill="#FFF0ED"/>
+  <rect x="80" y="70" width="1040" height="490" rx="48" fill="#fff" stroke="#DFE6DE"/>
+  <rect x="130" y="120" width="72" height="72" rx="24" fill="#18392B"/>
+  <path d="M149 173c13-2 13-18 24-19 12-2 11-16 22-18" fill="none" stroke="#6BCB77" stroke-width="8" stroke-linecap="round"/>
+  <text x="230" y="172" fill="#18201B" font-family="Arial Rounded MT Bold,Arial,sans-serif" font-size="54" font-weight="700">SkillPilot</text>
+  <text x="130" y="285" fill="#18201B" font-family="Arial Rounded MT Bold,Arial,sans-serif" font-size="64" font-weight="700">Learn smarter. Live balanced.</text>
+  <text x="130" y="365" fill="#18201B" font-family="Arial Rounded MT Bold,Arial,sans-serif" font-size="64" font-weight="700">Grow continuously.</text>
+  <text x="130" y="448" fill="#69736C" font-family="Arial,sans-serif" font-size="30">Your AI-powered roadmap, planned around your real life.</text>
+  <rect x="130" y="485" width="235" height="12" rx="6" fill="#6BCB77"/>
+  <rect x="380" y="485" width="125" height="12" rx="6" fill="#FFD166"/>
+  <rect x="520" y="485" width="180" height="12" rx="6" fill="#6C9EFF"/>
+</svg>

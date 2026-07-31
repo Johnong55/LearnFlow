@@ -253,7 +253,15 @@ export class SchedulingRepository {
   targetDate(userId: string, roadmapId: string) {
     return this.prisma.roadmap.findFirst({
       where: { id: roadmapId, userId, deletedAt: null },
-      select: { goal: { select: { targetDate: true } }, user: { select: { profile: true } } },
+      select: {
+        goal: { select: { targetDate: true, userConstraints: true } },
+        user: { select: { profile: true } },
+        versions: {
+          orderBy: { version: 'desc' },
+          take: 1,
+          select: { estimatedWeeks: true },
+        },
+      },
     });
   }
 }

@@ -132,14 +132,27 @@ export const roadmapJsonSchema = {
                       type: 'object',
                       additionalProperties: false,
                       properties: {
-                        title: { type: 'string', minLength: 2, maxLength: 250 },
-                        description: { type: 'string', maxLength: 5000 },
+                        title: {
+                          type: 'string',
+                          minLength: 2,
+                          maxLength: 250,
+                          description:
+                            'One concrete learning outcome suitable for a single study session.',
+                        },
+                        description: {
+                          type: 'string',
+                          maxLength: 5000,
+                          description:
+                            'Specific concepts or steps to cover and observable evidence of completion.',
+                        },
                         type: { type: 'string', enum: Object.values(LearningTaskType) },
                         order: { type: 'integer', minimum: 1 },
                         estimatedMinutes: {
                           type: 'integer',
                           minimum: 5,
                           maximum: 10080,
+                          description:
+                            'Prefer 25-120 minutes; split broader work into multiple ordered tasks.',
                         },
                         difficulty: { type: 'string', enum: Object.values(RoadmapDifficulty) },
                         priority: { type: 'integer', minimum: 1, maximum: 5 },

@@ -32,6 +32,7 @@ export class CloudflareWorkersAiProvider implements LlmProvider {
   private readonly apiToken: string;
   private readonly baseUrl: string;
   private readonly model: string;
+  private readonly fastModel: string;
   private readonly timeoutMs: number;
   private readonly maxTokens: number;
   private readonly temperature: number;
@@ -47,7 +48,11 @@ export class CloudflareWorkersAiProvider implements LlmProvider {
       'ai.cloudflare.model',
       '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
     );
-    this.timeoutMs = config.get<number>('ai.timeoutMs', 60000);
+    this.fastModel = config.get<string>(
+      'ai.cloudflare.fastModel',
+      '@cf/meta/llama-3.1-8b-instruct-fast',
+    );
+    this.timeoutMs = config.get<number>('ai.timeoutMs', 180000);
     this.maxTokens = config.get<number>('ai.cloudflare.maxTokens', 8192);
     this.temperature = config.get<number>('ai.cloudflare.temperature', 0.2);
   }
@@ -59,7 +64,8 @@ export class CloudflareWorkersAiProvider implements LlmProvider {
     if (!this.apiToken) {
       throw new Error('CLOUDFLARE_API_TOKEN is required for the Cloudflare Workers AI provider.');
     }
-    if (!/^@[a-z0-9-]+\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(this.model)) {
+    const selectedModel = input.inferenceProfile === 'FAST' ? this.fastModel : this.model;
+    if (!/^@[a-z0-9-]+\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(selectedModel)) {
       throw new Error('CLOUDFLARE_AI_MODEL must be a valid hosted model identifier.');
     }
 
@@ -67,7 +73,7 @@ export class CloudflareWorkersAiProvider implements LlmProvider {
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
       const response = await fetch(
-        `${this.baseUrl.replace(/\/$/, '')}/accounts/${encodeURIComponent(this.accountId)}/ai/run/${this.model}`,
+        `${this.baseUrl.replace(/\/$/, '')}/accounts/${encodeURIComponent(this.accountId)}/ai/run/${selectedModel}`,
         {
           method: 'POST',
           headers: {
@@ -96,8 +102,9 @@ export class CloudflareWorkersAiProvider implements LlmProvider {
 
       if (!response.ok) {
         const rayId = this.safeReason(response.headers.get('cf-ray'));
+        const providerCode = await this.readHttpErrorCode(response);
         throw new Error(
-          `Cloudflare Workers AI request failed with HTTP ${response.status}${rayId ? ` (ray ${rayId})` : ''}.`,
+          `Cloudflare Workers AI request failed with HTTP ${response.status}${providerCode ? `, code ${providerCode}` : ''}${rayId ? ` (ray ${rayId})` : ''}.`,
         );
       }
 
@@ -142,5 +149,17 @@ export class CloudflareWorkersAiProvider implements LlmProvider {
     if (value === undefined || value === null) return undefined;
     const text = String(value);
     return /^[A-Za-z0-9_.-]{1,100}$/.test(text) ? text : undefined;
+  }
+
+  private async readHttpErrorCode(response: Response): Promise<string | undefined> {
+    try {
+      const payload: unknown = await response.json();
+      const parsed = z
+        .object({ errors: z.array(cloudflareErrorSchema).default([]) })
+        .safeParse(payload);
+      return parsed.success ? this.safeReason(parsed.data.errors[0]?.code) : undefined;
+    } catch {
+      return undefined;
+    }
   }
 }

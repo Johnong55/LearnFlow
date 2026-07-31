@@ -43,7 +43,7 @@ export const environmentSchema = Joi.object({
   LLM_PROVIDER: Joi.string()
     .valid('mock', 'openai', 'cloudflare-workers-ai', 'anthropic', 'gemini', 'local')
     .default('mock'),
-  LLM_TIMEOUT_MS: Joi.number().integer().min(1000).max(300000).default(60000),
+  LLM_TIMEOUT_MS: Joi.number().integer().min(1000).max(300000).default(180000),
   OPENAI_API_KEY: Joi.when('LLM_PROVIDER', {
     is: 'openai',
     then: Joi.string().min(20).required(),
@@ -77,8 +77,31 @@ export const environmentSchema = Joi.object({
   CLOUDFLARE_AI_MODEL: Joi.string()
     .pattern(/^@[a-z0-9-]+\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/)
     .default('@cf/meta/llama-3.3-70b-instruct-fp8-fast'),
+  CLOUDFLARE_AI_FAST_MODEL: Joi.string()
+    .pattern(/^@[a-z0-9-]+\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/)
+    .default('@cf/meta/llama-3.1-8b-instruct-fast'),
   CLOUDFLARE_AI_MAX_TOKENS: Joi.number().integer().min(256).max(24000).default(8192),
   CLOUDFLARE_AI_TEMPERATURE: Joi.number().min(0).max(5).default(0.2),
+  GEMINI_API_KEY: Joi.when('LLM_PROVIDER', {
+    is: 'gemini',
+    then: Joi.string().min(20).max(512).required(),
+    otherwise: Joi.string().allow('').optional(),
+  }),
+  GEMINI_BASE_URL: Joi.string()
+    .uri({ scheme: ['https'] })
+    .default('https://generativelanguage.googleapis.com/v1beta'),
+  GEMINI_MODEL: Joi.string()
+    .pattern(/^[A-Za-z0-9._-]{1,100}$/)
+    .default('gemini-2.5-flash'),
+  GEMINI_FAST_MODEL: Joi.string()
+    .pattern(/^[A-Za-z0-9._-]{1,100}$/)
+    .default('gemini-2.5-flash-lite'),
+  GEMINI_MAX_OUTPUT_TOKENS: Joi.number().integer().min(256).max(65536).default(32768),
+  GEMINI_MAX_RETRIES: Joi.number().integer().min(0).max(6).default(3),
+  GEMINI_RETRY_BASE_DELAY_MS: Joi.number().integer().min(100).max(10000).default(1000),
+  GEMINI_RETRY_MAX_DELAY_MS: Joi.number().integer().min(1000).max(60000).default(15000),
+  ROADMAP_PERSONALIZATION_TIMEOUT_MS: Joi.number().integer().min(60000).max(900000).default(900000),
+  ROADMAP_LLM_CONCURRENCY: Joi.number().integer().min(1).max(5).default(2),
   SEARCH_PROVIDER: Joi.string()
     .valid('mock', 'google', 'bing', 'brave', 'tavily', 'serper')
     .default('mock'),

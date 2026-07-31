@@ -14,3 +14,9 @@ src/generated/prisma/
 .vscode/
 prisma/dev.db
 backups/
+frontend/.next/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+frontend/.env.local
+frontend/.env.*.local

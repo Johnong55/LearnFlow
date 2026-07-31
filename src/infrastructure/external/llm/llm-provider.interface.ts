@@ -8,6 +8,7 @@ export interface LlmRequest {
   userPrompt: string;
   context?: Record<string, unknown>;
   safetyIdentifier?: string;
+  inferenceProfile?: 'FAST' | 'QUALITY';
 }
 
 export interface LlmProvider {

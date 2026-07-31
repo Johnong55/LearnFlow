@@ -87,16 +87,24 @@ export class SchedulingService {
     const timeZone = roadmap.user.profile?.timezone ?? 'UTC';
     const today = localDateKey(new Date(), timeZone);
     const from = dto.from ?? addLocalDays(today, 1);
-    const targetDate = localDateKey(roadmap.goal.targetDate, timeZone);
-    const defaultTo = addLocalDays(from, 27);
-    const to = dto.to ?? (targetDate >= from && targetDate < defaultTo ? targetDate : defaultTo);
+    const estimatedWeeks = roadmap.versions[0]?.estimatedWeeks ?? 4;
+    const defaultTo = addLocalDays(from, Math.min(364, estimatedWeeks * 7 - 1));
+    const to = dto.to ?? defaultTo;
     if (to < from) throw new BadRequestException('Schedule end date must not precede start date.');
-    if (to > addLocalDays(from, 89))
-      throw new BadRequestException('A schedule request cannot exceed 90 days.');
+    if (to > addLocalDays(from, 364))
+      throw new BadRequestException('A schedule request cannot exceed 365 days.');
+    const constraints =
+      typeof roadmap.goal.userConstraints === 'object' &&
+      roadmap.goal.userConstraints !== null &&
+      !Array.isArray(roadmap.goal.userConstraints)
+        ? (roadmap.goal.userConstraints as Record<string, unknown>)
+        : {};
+    const requestedMode = constraints.reschedulingMode;
+    const preferredMode = Object.values(ReschedulingMode).find((mode) => mode === requestedMode);
     return {
       from,
       to,
-      mode: dto.mode ?? ReschedulingMode.BALANCED,
+      mode: dto.mode ?? preferredMode ?? ReschedulingMode.BALANCED,
       minimumSessionMinutes: dto.minimumSessionMinutes ?? 25,
       breakMinutes: dto.breakMinutes ?? 10,
     };

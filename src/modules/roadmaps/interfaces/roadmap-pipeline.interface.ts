@@ -8,6 +8,8 @@ export interface RoadmapJobData {
   queries?: string[];
   searchResults?: SearchResult[];
   roadmapDraft?: unknown;
+  roadmapBlueprint?: unknown;
+  milestoneExpansions?: unknown[];
 }
 
 export interface GenerationContext {

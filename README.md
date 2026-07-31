@@ -162,8 +162,8 @@ Required in production: `DATABASE_URL`, `REDIS_URL`, and distinct 32+ character 
 
 Local development defaults to deterministic `SEARCH_PROVIDER=mock` and
 `LLM_PROVIDER=mock`. Tavily is available as the first hosted search adapter;
-OpenAI Responses API and Cloudflare Workers AI are available as hosted LLM
-adapters. Other unsupported provider names fail during startup rather than
+OpenAI Responses API, Cloudflare Workers AI, and Gemini are available as hosted
+LLM adapters. Other unsupported provider names fail during startup rather than
 silently falling back.
 
 To enable Tavily, create an API key in its dashboard and update the environment:
@@ -174,10 +174,11 @@ TAVILY_API_KEY=replace-with-your-tavily-key
 TAVILY_SEARCH_DEPTH=basic
 ```
 
-`basic` is the cost-conscious default. The adapter requests only ranked snippets
-and metadata, never raw page content, passes the configured source allowlist and
-blocklist to Tavily, and enforces the same domain policy again after receiving a
-response. Optional variables are documented in `.env.example`.
+`basic` is the cost-conscious default. The adapter requests ranked snippets and
+cleaned Markdown content, passes the configured source allowlist and blocklist
+to Tavily, and enforces the same domain policy again after receiving a response.
+The worker bounds source text before sending it to an LLM. Optional variables
+are documented in `.env.example`.
 
 To generate a real source-grounded roadmap with OpenAI Structured Outputs:
 
@@ -188,11 +189,17 @@ OPENAI_MODEL=gpt-5.6-sol
 OPENAI_REASONING_EFFORT=medium
 ```
 
-The worker sends the goal, personalization constraints, source URLs, titles, and
-search snippets to the configured model. It sets `store=false`, uses a hashed
-user identifier for the safety identifier, handles refusals and incomplete
-responses, parses strict JSON Schema output, validates it again with Zod, and
-rejects any source URL that was not returned by search.
+The worker uses a multi-pass generation pipeline. The first LLM call creates a
+complete curriculum blueprint. Separate bounded calls then expand every
+milestone into concrete 25–120 minute tasks with observable completion evidence.
+The result is checked against minimum milestone, module, task, and total-duration
+requirements before persistence. Tavily supplies both query-focused snippets
+and cleaned raw page content when configured. Unknown source URLs are rejected.
+
+After a valid roadmap version is saved, the deterministic scheduler queues a
+full-range daily plan. It chooses exact dates and times from the user's work,
+sleep, routine, availability, daily-load, energy-time, and dependency constraints;
+the LLM does not bypass these hard scheduling rules.
 
 To use a Cloudflare-hosted model instead of OpenAI, create a Workers AI API token
 with `Workers AI - Read` and `Workers AI - Edit` permissions, copy the account ID,
@@ -213,6 +220,20 @@ for every generation, so the existing application-level Zod validation remains
 mandatory. Invalid model output fails the job and is retried through BullMQ; it
 is never persisted as a roadmap.
 
+To use Gemini with the same validated multi-pass roadmap pipeline:
+
+```dotenv
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=replace-with-your-gemini-api-key
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_FAST_MODEL=gemini-2.5-flash
+GEMINI_MAX_OUTPUT_TOKENS=32768
+```
+
+The Gemini adapter sends the API key only in the `x-goog-api-key` header, uses
+JSON structured output, strips unsupported JSON Schema keywords, and still
+validates every result with the application's Zod schemas before persistence.
+
 Roadmap discovery does not depend on finding one complete public roadmap. Each
 run searches for roadmaps, official documentation, learning paths, tutorials,
 exercises, assessments, and projects. The LLM can synthesize these fragments
@@ -227,13 +248,20 @@ npm ci
 cp .env.example .env
 npm run prisma:generate
 npm run prisma:migrate -- --name phase_1
-npm run start:dev
+npm run dev
 ```
 
-Start the worker in another terminal:
+`npm run dev` starts the NestJS API, BullMQ worker, and Next.js frontend in the
+same terminal. The API is available at `http://localhost:3000`, Swagger at
+`http://localhost:3000/docs`, and the frontend at `http://localhost:3001`.
+Press `Ctrl+C` once to stop all three processes.
+
+Individual processes can still be started separately when debugging:
 
 ```bash
-npm run start:worker:dev
+npm run dev:api
+npm run dev:worker
+npm run dev:frontend
 ```
 
 ## Docker development
@@ -255,9 +283,10 @@ docker compose down
 
 ## Production deployment
 
-Phase 6 provides a multi-stage, non-root image; isolated PostgreSQL and Redis;
-separate API, worker, and migration containers; Nginx TLS termination; Certbot;
-health checks; resource limits; log rotation; and backup/restore automation.
+Phase 6 provides non-root backend and frontend images; isolated PostgreSQL and
+Redis; separate web, API, worker, and migration containers; Nginx TLS
+termination; Certbot; health checks; resource limits; log rotation; and
+backup/restore automation.
 
 Use the complete [VPS deployment runbook](docs/deployment.md). Validate production
 configuration locally before a release:

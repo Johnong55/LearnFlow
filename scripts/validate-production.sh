@@ -42,6 +42,7 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
 
 docker run --rm \
   --add-host api:127.0.0.1 \
+  --add-host web:127.0.0.1 \
   --env DOMAIN="$domain" \
   --env NGINX_ENVSUBST_FILTER=DOMAIN \
   --volume "$PROJECT_DIR/nginx.conf:/etc/nginx/nginx.conf:ro" \

@@ -1,8 +1,8 @@
 # LearnFlow production deployment
 
-This runbook deploys LearnFlow to one Ubuntu VPS with Docker Compose. Nginx is
-the only public container; PostgreSQL and Redis stay on an internal Docker
-network.
+This runbook deploys the SkillPilot frontend and LearnFlow backend to one Ubuntu
+VPS with Docker Compose. Nginx is the only public container; Next.js, NestJS,
+PostgreSQL, and Redis stay behind Docker networks.
 
 ## 1. Prepare the VPS
 
@@ -30,12 +30,12 @@ deployment operator if passwordless Docker commands are required.
 
 ## 2. DNS and firewall
 
-Create an `A` record for the API hostname pointing to the VPS public IPv4
+Create an `A` record for the application hostname pointing to the VPS public IPv4
 address. Add an `AAAA` record only when IPv6 is configured on the server. Wait
 until the record resolves before requesting a certificate:
 
 ```bash
-getent ahosts api.example.com
+getent ahosts app.example.com
 ```
 
 Allow SSH before enabling the firewall, then expose only HTTP and HTTPS:
@@ -71,9 +71,11 @@ If a different account or directory is used, update `User`, `Group`,
 
 Edit `.env.production` and replace every example value. Required choices:
 
-- Set `DOMAIN` to the API hostname and `LETSENCRYPT_EMAIL` to an operations
-  address.
-- Set `CORS_ORIGINS` to the exact HTTPS frontend origins, comma separated.
+- Set `DOMAIN` to the application hostname and `LETSENCRYPT_EMAIL` to an
+  operations address.
+- Set `NEXT_PUBLIC_APP_URL` and `CORS_ORIGINS` to the same application HTTPS
+  origin. Keep `NEXT_PUBLIC_API_BASE_URL=/api/v1` so browser API requests remain
+  same-origin.
 - Generate distinct JWT secrets with `openssl rand -base64 48`.
 - Generate separate PostgreSQL and Redis passwords. URL-encode special
   characters when putting those passwords into `DATABASE_URL` or `REDIS_URL`.
@@ -112,7 +114,7 @@ git fetch --tags origin
 git checkout main
 git pull --ff-only origin main
 export APP_VERSION="$(git rev-parse --short=12 HEAD)"
-docker compose --env-file .env.production -f docker-compose.prod.yml build migrate api worker
+docker compose --env-file .env.production -f docker-compose.prod.yml build migrate api worker web
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 ```
 
@@ -121,8 +123,9 @@ started only after migrations complete successfully. Confirm the result:
 
 ```bash
 docker compose --env-file .env.production -f docker-compose.prod.yml ps
-curl --fail --silent --show-error https://api.example.com/health/live
-curl --fail --silent --show-error https://api.example.com/health/ready
+curl --fail --silent --show-error https://app.example.com/
+curl --fail --silent --show-error https://app.example.com/health/live
+curl --fail --silent --show-error https://app.example.com/health/ready
 ```
 
 Readiness checks PostgreSQL, Redis, and BullMQ. A failed readiness response
@@ -131,7 +134,7 @@ means the container is alive but should not receive production traffic.
 ## 6. Inspect logs and health
 
 ```bash
-docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail=200 api worker nginx
+docker compose --env-file .env.production -f docker-compose.prod.yml logs --tail=200 web api worker nginx
 docker compose --env-file .env.production -f docker-compose.prod.yml logs --since=30m api
 docker compose --env-file .env.production -f docker-compose.prod.yml ps
 docker stats --no-stream
@@ -208,7 +211,7 @@ git fetch --tags origin
 git checkout main
 git pull --ff-only origin main
 export APP_VERSION="$(git rev-parse --short=12 HEAD)"
-docker compose --env-file .env.production -f docker-compose.prod.yml build migrate api worker
+docker compose --env-file .env.production -f docker-compose.prod.yml build migrate api worker web
 docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 docker compose --env-file .env.production -f docker-compose.prod.yml ps
 ```

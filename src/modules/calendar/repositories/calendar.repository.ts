@@ -20,7 +20,19 @@ export class CalendarRepository {
           startAt: { lt: to },
           endAt: { gt: from },
         },
-        include: { task: true },
+        include: {
+          task: {
+            include: {
+              module: {
+                include: {
+                  milestone: {
+                    include: { version: { select: { roadmapId: true } } },
+                  },
+                },
+              },
+            },
+          },
+        },
         orderBy: { startAt: 'asc' },
       }),
     ]);

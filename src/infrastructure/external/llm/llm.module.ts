@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CloudflareWorkersAiProvider } from './cloudflare-workers-ai.provider';
+import { GeminiLlmProvider } from './gemini-llm.provider';
 import { LLM_PROVIDER } from './llm-provider.interface';
 import { MockLlmProvider } from './mock-llm.provider';
 import { OpenAiLlmProvider } from './openai-llm.provider';
@@ -11,19 +12,28 @@ import { OpenAiLlmProvider } from './openai-llm.provider';
     MockLlmProvider,
     OpenAiLlmProvider,
     CloudflareWorkersAiProvider,
+    GeminiLlmProvider,
     {
       provide: LLM_PROVIDER,
-      inject: [ConfigService, MockLlmProvider, OpenAiLlmProvider, CloudflareWorkersAiProvider],
+      inject: [
+        ConfigService,
+        MockLlmProvider,
+        OpenAiLlmProvider,
+        CloudflareWorkersAiProvider,
+        GeminiLlmProvider,
+      ],
       useFactory: (
         config: ConfigService,
         mock: MockLlmProvider,
         openai: OpenAiLlmProvider,
         cloudflare: CloudflareWorkersAiProvider,
+        gemini: GeminiLlmProvider,
       ) => {
         const provider = config.get<string>('ai.provider', 'mock');
         if (provider === 'mock') return mock;
         if (provider === 'openai') return openai;
         if (provider === 'cloudflare-workers-ai') return cloudflare;
+        if (provider === 'gemini') return gemini;
         throw new Error(`LLM provider "${provider}" is not installed in this build.`);
       },
     },

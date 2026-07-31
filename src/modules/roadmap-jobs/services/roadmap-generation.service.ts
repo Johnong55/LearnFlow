@@ -1,16 +1,29 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JobStatus, Prisma } from '@/generated/prisma/client';
-import type { Queue } from 'bullmq';
+import { JobStatus, Prisma, type BackgroundJob } from '@/generated/prisma/client';
+import type { Job, Queue } from 'bullmq';
 import { randomUUID } from 'node:crypto';
-import { ROADMAP_QUEUE, ROADMAP_SEARCH_JOB } from '@/infrastructure/queue/roadmap-queue.constants';
+import {
+  ROADMAP_PERSONALIZATION_JOB,
+  ROADMAP_QUEUE,
+  ROADMAP_SEARCH_JOB,
+  ROADMAP_SOURCE_PROCESSING_JOB,
+  ROADMAP_VALIDATION_JOB,
+} from '@/infrastructure/queue/roadmap-queue.constants';
 import type { RoadmapJobData } from '@/modules/roadmaps/interfaces/roadmap-pipeline.interface';
 import { RoadmapsRepository } from '@/modules/roadmaps/repositories/roadmaps.repository';
 import { RoadmapJobsRepository } from '../repositories/roadmap-jobs.repository';
 
 @Injectable()
 export class RoadmapGenerationService {
+  private readonly pipelineStages = [
+    ROADMAP_SEARCH_JOB,
+    ROADMAP_SOURCE_PROCESSING_JOB,
+    ROADMAP_PERSONALIZATION_JOB,
+    ROADMAP_VALIDATION_JOB,
+  ] as const;
+
   constructor(
     @InjectQueue(ROADMAP_QUEUE) private readonly queue: Queue<RoadmapJobData>,
     private readonly jobs: RoadmapJobsRepository,
@@ -22,7 +35,7 @@ export class RoadmapGenerationService {
     const context = await this.roadmaps.loadGenerationContext(userId, goalId);
     if (!context) throw new NotFoundException('Learning goal not found.');
     const active = await this.jobs.findActiveForGoal(userId, goalId);
-    if (active) return this.view(active);
+    if (active) return this.get(userId, active.id);
 
     const roadmap = await this.roadmaps.markGenerating(
       userId,
@@ -34,7 +47,7 @@ export class RoadmapGenerationService {
     const runId = randomUUID();
     let created;
     try {
-      created = await this.jobs.create(backgroundJobId, externalId, userId, goalId);
+      created = await this.jobs.create(backgroundJobId, externalId, userId, goalId, runId);
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         const existing = await this.jobs.findByExternalId(userId, externalId);
@@ -58,14 +71,16 @@ export class RoadmapGenerationService {
   }
 
   async get(userId: string, id: string) {
-    const job = await this.jobs.findOwned(userId, id);
+    let job = await this.jobs.findOwned(userId, id);
     if (!job) throw new NotFoundException('Roadmap generation job not found.');
+    job = await this.reconcileTerminalQueueState(job);
     return this.view(job);
   }
 
   async retry(userId: string, id: string) {
-    const job = await this.jobs.findOwned(userId, id);
+    let job = await this.jobs.findOwned(userId, id);
     if (!job) throw new NotFoundException('Roadmap generation job not found.');
+    job = await this.reconcileTerminalQueueState(job);
     if (job.status !== JobStatus.FAILED)
       throw new ConflictException('Only failed roadmap jobs can be retried.');
     const payload = job.payload as { goalId?: unknown } | null;
@@ -73,7 +88,8 @@ export class RoadmapGenerationService {
       throw new ConflictException('Roadmap job payload is invalid.');
     const context = await this.roadmaps.loadGenerationContext(userId, payload.goalId);
     if (!context) throw new NotFoundException('Learning goal not found.');
-    await this.jobs.resetForRetry(id);
+    const runId = randomUUID();
+    await this.jobs.resetForRetry(id, payload.goalId, runId);
     await this.roadmaps.markGenerating(
       userId,
       payload.goalId,
@@ -82,7 +98,7 @@ export class RoadmapGenerationService {
     await this.roadmaps.markGoalAnalyzing(userId, payload.goalId);
     await this.enqueueSearch({
       backgroundJobId: id,
-      runId: randomUUID(),
+      runId,
       userId,
       goalId: payload.goalId,
     });
@@ -98,6 +114,55 @@ export class RoadmapGenerationService {
         delay: this.config.get<number>('ROADMAP_JOB_BACKOFF_MS', 1000),
       },
     });
+  }
+
+  private async reconcileTerminalQueueState(job: BackgroundJob): Promise<BackgroundJob> {
+    if (job.status !== JobStatus.QUEUED && job.status !== JobStatus.RUNNING) return job;
+
+    const payload = job.payload as { goalId?: unknown; runId?: unknown } | null;
+    let queueJobs: Job<RoadmapJobData>[];
+    if (typeof payload?.runId === 'string') {
+      const candidates = await Promise.all(
+        this.pipelineStages.map((stage) =>
+          this.queue.getJob(`${job.id}-${payload.runId as string}-${stage}`),
+        ),
+      );
+      queueJobs = candidates.filter((candidate): candidate is Job<RoadmapJobData> => !!candidate);
+    } else {
+      const candidates = await this.queue.getJobs(
+        ['active', 'waiting', 'delayed', 'prioritized', 'waiting-children', 'failed'],
+        0,
+        499,
+        true,
+      );
+      queueJobs = candidates.filter((candidate) => candidate.data.backgroundJobId === job.id);
+    }
+
+    const queueStates = await Promise.all(
+      queueJobs.map(async (candidate) => ({ candidate, state: await candidate.getState() })),
+    );
+    const stillRunning = queueStates.some(({ state }) =>
+      ['active', 'waiting', 'delayed', 'prioritized', 'waiting-children'].includes(state),
+    );
+    if (stillRunning) return job;
+
+    const latestFailure = queueStates
+      .filter(({ state }) => state === 'failed')
+      .sort(
+        (left, right) => (right.candidate.finishedOn ?? 0) - (left.candidate.finishedOn ?? 0),
+      )[0]?.candidate;
+    if (!latestFailure) return job;
+
+    const errorMessage = latestFailure.failedReason || 'Roadmap generation failed in BullMQ.';
+    const errorCode = errorMessage.trimStart().startsWith('[')
+      ? 'AI_OUTPUT_INVALID'
+      : `ROADMAP_${latestFailure.name.toUpperCase().replaceAll('-', '_')}_FAILED`;
+    await this.jobs.fail(job.id, errorCode, errorMessage.slice(0, 2000));
+    if (job.userId && typeof payload?.goalId === 'string') {
+      await this.roadmaps.markFailed(job.userId, payload.goalId);
+    }
+    const reconciled = job.userId ? await this.jobs.findOwned(job.userId, job.id) : null;
+    return reconciled ?? job;
   }
 
   private view(job: {

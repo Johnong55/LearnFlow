@@ -85,7 +85,7 @@ describe('TavilySearchProvider', () => {
         query: 'Node.js backend roadmap',
         search_depth: 'basic',
         max_results: 4,
-        include_raw_content: false,
+        include_raw_content: 'markdown',
         include_domains: ['nodejs.org'],
         exclude_domains: ['tracking.nodejs.org'],
       }),
