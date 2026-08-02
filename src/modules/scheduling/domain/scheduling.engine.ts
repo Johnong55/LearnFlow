@@ -211,26 +211,37 @@ export class SchedulingEngine {
     task: SchedulingTask,
     input: SchedulingInput,
   ): number {
-    const candidates = slots
-      .map((slot, index) => ({ slot, index }))
-      .filter(({ slot }) => {
-        const start = earliestStart && slot.startAt < earliestStart ? earliestStart : slot.startAt;
-        return (
-          slot.endAt.getTime() - start.getTime() >= minutes * MINUTE_MS &&
-          (dailyMinutes[slot.dateKey] ?? 0) + minutes <=
-            this.dailyLimit(maxDailyLearningMinutes, input.mode, slot.dateKey)
-        );
-      });
-    candidates.sort((left, right) => {
-      if (left.slot.dateKey !== right.slot.dateKey)
-        return left.slot.dateKey.localeCompare(right.slot.dateKey);
-      return this.slotScore(right.slot, task, input) - this.slotScore(left.slot, task, input);
-    });
-    const selected = candidates[0];
-    if (!selected) return -1;
-    if (earliestStart && slots[selected.index]!.startAt < earliestStart)
-      slots[selected.index]!.startAt = new Date(earliestStart);
-    return selected.index;
+    let selectedIndex = -1;
+    let selectedDate = '';
+    let selectedScore = Number.NEGATIVE_INFINITY;
+
+    for (let index = 0; index < slots.length; index += 1) {
+      const slot = slots[index]!;
+      const start = earliestStart && slot.startAt < earliestStart ? earliestStart : slot.startAt;
+      if (
+        slot.endAt.getTime() - start.getTime() < minutes * MINUTE_MS ||
+        (dailyMinutes[slot.dateKey] ?? 0) + minutes >
+          this.dailyLimit(maxDailyLearningMinutes, input.mode, slot.dateKey)
+      ) {
+        continue;
+      }
+
+      const score = this.slotScore(slot, task, input);
+      if (
+        selectedIndex < 0 ||
+        slot.dateKey < selectedDate ||
+        (slot.dateKey === selectedDate && score > selectedScore)
+      ) {
+        selectedIndex = index;
+        selectedDate = slot.dateKey;
+        selectedScore = score;
+      }
+    }
+
+    if (selectedIndex < 0) return -1;
+    if (earliestStart && slots[selectedIndex]!.startAt < earliestStart)
+      slots[selectedIndex]!.startAt = new Date(earliestStart);
+    return selectedIndex;
   }
 
   private slotScore(slot: MutableSlot, task: SchedulingTask, input: SchedulingInput): number {

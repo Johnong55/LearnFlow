@@ -195,9 +195,30 @@ describe('Phase 4 deterministic scheduling (e2e)', () => {
     expect(previewData.summary.scheduledSessions).toBe(4);
     expect(previewData.sessions.every((session) => session.startAt >= eventEnd)).toBe(true);
 
-    const firstJob = await startAndWait(body);
+    const [firstJobId, duplicateJobId] = await Promise.all([
+      startSchedule(body, 'generate'),
+      startSchedule(body, 'generate'),
+    ]);
+    expect(duplicateJobId).toBe(firstJobId);
+    const firstJob = await waitForJob(firstJobId);
     expect(firstJob.result?.scheduledSessions).toBe(4);
-    const secondJob = await startAndWait(body);
+    await request(server)
+      .post('/api/v1/schedules/generate')
+      .set({ authorization })
+      .send(body)
+      .expect(409);
+
+    const replacementPreview = await request(server)
+      .post('/api/v1/schedules/preview')
+      .set({ authorization })
+      .send(body)
+      .expect(200);
+    expect(
+      parse<{ impact: { action: string; existingSessions: number } }>(replacementPreview.text).data
+        .impact,
+    ).toEqual({ action: 'REBALANCE', existingSessions: 4 });
+
+    const secondJob = await startAndWait(body, 'rebalance');
     expect(secondJob.result?.scheduledSessions).toBe(4);
     await expect(
       prisma.studySession.count({
@@ -217,14 +238,30 @@ describe('Phase 4 deterministic scheduling (e2e)', () => {
     expect(items.filter((item) => item.kind === 'STUDY_SESSION')).toHaveLength(4);
   });
 
-  async function startAndWait(body: Record<string, unknown>): Promise<JobView> {
+  async function startAndWait(
+    body: Record<string, unknown>,
+    action: 'generate' | 'rebalance' = 'generate',
+  ): Promise<JobView> {
+    return waitForJob(await startSchedule(body, action));
+  }
+
+  async function startSchedule(
+    body: Record<string, unknown>,
+    action: 'generate' | 'rebalance',
+  ): Promise<string> {
     const started = await request(server)
-      .post('/api/v1/schedules/generate')
+      .post(`/api/v1/schedules/${action}`)
       .set({ authorization })
-      .send(body)
-      .expect(202);
+      .send(body);
+    if (started.status !== 202) {
+      throw new Error(`Failed to ${action} schedule: ${started.status} ${started.text}`);
+    }
     const id = parse<JobView>(started.text).data.jobId;
-    backgroundJobIds.push(id);
+    if (!backgroundJobIds.includes(id)) backgroundJobIds.push(id);
+    return id;
+  }
+
+  async function waitForJob(id: string): Promise<JobView> {
     const deadline = Date.now() + 15_000;
     while (Date.now() < deadline) {
       const response = await request(server)

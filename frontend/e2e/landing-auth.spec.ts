@@ -15,7 +15,10 @@ async function mockGuest(page: import("@playwright/test").Page) {
         body: JSON.stringify({
           success: false,
           error: { code: "UNAUTHORIZED", message: "Not signed in" },
-          meta: { requestId: "landing-e2e", timestamp: new Date().toISOString() },
+          meta: {
+            requestId: "landing-e2e",
+            timestamp: new Date().toISOString(),
+          },
         }),
       }),
     );
@@ -123,7 +126,9 @@ test("product preview tabs support arrow-key navigation", async ({ page }) => {
 test("landing page has no horizontal overflow", async ({ page }) => {
   await mockGuest(page);
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /turn the skills you want/i })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /turn the skills you want/i }),
+  ).toBeVisible();
 
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth,
@@ -138,8 +143,12 @@ test("landing page respects reduced-motion preference", async ({ page }) => {
 
   await expect
     .poll(() =>
-      page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches),
+      page.evaluate(
+        () => matchMedia("(prefers-reduced-motion: reduce)").matches,
+      ),
     )
     .toBe(true);
-  await expect(page.getByRole("heading", { name: /turn the skills you want/i })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /turn the skills you want/i }),
+  ).toBeVisible();
 });

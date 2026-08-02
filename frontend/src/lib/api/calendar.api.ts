@@ -43,6 +43,11 @@ export type StudySession = {
   endAt: string;
   plannedMinutes: number;
   actualMinutes: number | null;
+  startedAt: string | null;
+  lastResumedAt: string | null;
+  pausedAt: string | null;
+  completedAt: string | null;
+  accumulatedSeconds: number;
   status: StudySessionStatus;
   source: "GENERATED" | "REBALANCED" | "MANUAL";
   task: {

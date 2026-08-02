@@ -1,5 +1,10 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ReschedulingMode, StudySessionSource } from '@/generated/prisma/client';
 import type { Queue } from 'bullmq';
@@ -27,8 +32,20 @@ export class SchedulingService {
 
   async preview(userId: string, dto: ScheduleRequestDto) {
     const request = await this.resolveRequest(userId, dto);
-    const { input, version } = await this.repository.buildInput(userId, dto.roadmapId, request);
-    return { roadmapId: dto.roadmapId, roadmapVersion: version, ...this.engine.generate(input) };
+    const { input, version, replaceableSessionCount } = await this.repository.buildInput(
+      userId,
+      dto.roadmapId,
+      request,
+    );
+    return {
+      roadmapId: dto.roadmapId,
+      roadmapVersion: version,
+      ...this.engine.generate(input),
+      impact: {
+        action: replaceableSessionCount > 0 ? 'REBALANCE' : 'CREATE',
+        existingSessions: replaceableSessionCount,
+      },
+    };
   }
 
   async generate(userId: string, dto: ScheduleRequestDto) {
@@ -41,9 +58,18 @@ export class SchedulingService {
 
   private async enqueue(userId: string, dto: ScheduleRequestDto, source: StudySessionSource) {
     const request = await this.resolveRequest(userId, dto);
-    await this.repository.buildInput(userId, dto.roadmapId, request);
-    const active = await this.jobs.findActive(userId, dto.roadmapId);
-    if (active) return this.jobView(active);
+    if (source === StudySessionSource.GENERATED) {
+      const existingSessions = await this.repository.countReplaceableSessions(
+        userId,
+        dto.roadmapId,
+        request,
+      );
+      if (existingSessions > 0) {
+        throw new ConflictException(
+          'A generated schedule already exists. Preview and use rebalance to update it safely.',
+        );
+      }
+    }
     const data: ScheduleJobData = {
       backgroundJobId: randomUUID(),
       userId,
@@ -51,7 +77,8 @@ export class SchedulingService {
       source,
       ...request,
     };
-    const job = await this.jobs.create(data);
+    const queued = await this.jobs.createOrGetActive(data);
+    if (!queued.created) return this.jobView(queued.job);
     try {
       await this.queue.add(SCHEDULE_GENERATION_JOB, data, {
         jobId: data.backgroundJobId,
@@ -68,7 +95,7 @@ export class SchedulingService {
       );
       throw error;
     }
-    return this.jobView(job);
+    return this.jobView(queued.job);
   }
 
   conflicts(userId: string) {
@@ -104,6 +131,7 @@ export class SchedulingService {
     return {
       from,
       to,
+      timeZone,
       mode: dto.mode ?? preferredMode ?? ReschedulingMode.BALANCED,
       minimumSessionMinutes: dto.minimumSessionMinutes ?? 25,
       breakMinutes: dto.breakMinutes ?? 10,

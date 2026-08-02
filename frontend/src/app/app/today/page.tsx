@@ -34,6 +34,9 @@ type ActionInput = {
   session: StudySessionItem;
   action: "start" | "pause" | "skip" | "complete";
   actualMinutes?: number;
+  difficultyRating?: number;
+  focusLevel?: number;
+  tookLongerThanExpected?: boolean;
   notes?: string;
   openFocusAfter?: boolean;
 };
@@ -84,10 +87,17 @@ export default function TodayPage() {
         });
       return sessionsApi.complete(input.session.id, {
         actualMinutes: input.actualMinutes ?? input.session.plannedMinutes,
+        ...(input.difficultyRating
+          ? { difficultyRating: input.difficultyRating }
+          : {}),
+        ...(input.focusLevel ? { focusLevel: input.focusLevel } : {}),
+        ...(input.tookLongerThanExpected !== undefined
+          ? { tookLongerThanExpected: input.tookLongerThanExpected }
+          : {}),
         ...(input.notes ? { notes: input.notes } : {}),
       });
     },
-    onSuccess: async (_data, input) => {
+    onSuccess: async (data, input) => {
       toast.success(
         input.action === "complete"
           ? "Đã hoàn thành phiên học"
@@ -98,7 +108,23 @@ export default function TodayPage() {
               : "Đã bắt đầu phiên học",
       );
       if (input.action === "start" && input.openFocusAfter) {
-        setFocusSession({ ...input.session, status: "IN_PROGRESS" });
+        setFocusSession({
+          ...input.session,
+          ...(data && "status" in data ? data : {}),
+          task: input.session.task,
+          kind: "STUDY_SESSION",
+          status: "IN_PROGRESS",
+          pausedAt: null,
+        });
+      } else if (input.action === "pause") {
+        setFocusSession({
+          ...input.session,
+          ...(data && "status" in data ? data : {}),
+          task: input.session.task,
+          kind: "STUDY_SESSION",
+          status: "PAUSED",
+          lastResumedAt: null,
+        });
       } else {
         setFocusSession(null);
       }
@@ -330,7 +356,7 @@ export default function TodayPage() {
       </Card>
       {focusSession ? (
         <SessionFocusDialog
-          key={`${focusSession.id}-${focusSession.status}`}
+          key={focusSession.id}
           open
           session={focusSession}
           pending={action.isPending}

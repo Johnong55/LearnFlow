@@ -6,6 +6,7 @@ export interface ScheduleJobData {
   roadmapId: string;
   from: string;
   to: string;
+  timeZone: string;
   mode: ReschedulingMode;
   minimumSessionMinutes: number;
   breakMinutes: number;

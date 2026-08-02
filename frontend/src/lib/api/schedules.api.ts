@@ -36,6 +36,10 @@ export type SchedulePlan = {
     scheduledMinutes: number;
     unscheduledTasks: number;
   };
+  impact?: {
+    action: "CREATE" | "REBALANCE";
+    existingSessions: number;
+  };
 };
 
 export type ScheduleJob = {
@@ -49,8 +53,13 @@ export type ScheduleJob = {
   updatedAt: string;
 };
 
-const config = (signal?: AbortSignal): AxiosRequestConfig =>
-  signal ? { signal } : {};
+const config = (
+  signal?: AbortSignal,
+  timeout?: number,
+): AxiosRequestConfig => ({
+  ...(signal ? { signal } : {}),
+  ...(timeout ? { timeout } : {}),
+});
 
 export const schedulesApi = {
   preview: (
@@ -61,7 +70,7 @@ export const schedulesApi = {
       apiClient.post<ApiResponse<SchedulePlan>>(
         "/schedules/preview",
         input,
-        config(signal),
+        config(signal, 60_000),
       ),
     ),
   generate: (
@@ -72,7 +81,18 @@ export const schedulesApi = {
       apiClient.post<ApiResponse<ScheduleJob>>(
         "/schedules/generate",
         input,
-        config(signal),
+        config(signal, 20_000),
+      ),
+    ),
+  rebalance: (
+    input: ScheduleRequest,
+    signal?: AbortSignal,
+  ): Promise<ScheduleJob> =>
+    unwrap(
+      apiClient.post<ApiResponse<ScheduleJob>>(
+        "/schedules/rebalance",
+        input,
+        config(signal, 20_000),
       ),
     ),
   job: (id: string, signal?: AbortSignal): Promise<ScheduleJob> =>

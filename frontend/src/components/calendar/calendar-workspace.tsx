@@ -4,14 +4,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { addDays, format, isSameDay, startOfWeek } from "date-fns";
 import { vi } from "date-fns/locale";
 import {
+  BriefcaseBusiness,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  CircleAlert,
   Clock3,
+  MoonStar,
   Plus,
   Sparkles,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { EventEditor } from "@/components/calendar/event-editor";
@@ -19,6 +22,11 @@ import { ScheduleBuilder } from "@/components/calendar/schedule-builder";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { buildDayEntries } from "@/features/calendar/day-entries";
+import {
+  buildTimelineBlocks,
+  type TimelineBlock,
+} from "@/features/calendar/week-timeline";
 import type { DayOfWeek } from "@/features/onboarding/types";
 import {
   calendarApi,
@@ -28,7 +36,7 @@ import {
 } from "@/lib/api/calendar.api";
 import { isApiError } from "@/lib/api/errors";
 import { roadmapsApi } from "@/lib/api/roadmaps.api";
-import { routinesApi } from "@/lib/api/routines.api";
+import { routinesApi, type Routine } from "@/lib/api/routines.api";
 import { localDateKey, timeLabel } from "@/lib/date/calendar";
 import { queryKeys } from "@/lib/query/keys";
 import { cn } from "@/lib/utils/cn";
@@ -42,6 +50,11 @@ const dayEnumByIndex: Record<number, DayOfWeek> = {
   5: "FRIDAY",
   6: "SATURDAY",
 };
+
+const TIMELINE_HOUR_HEIGHT = 52;
+const TIMELINE_MINUTE_HEIGHT = TIMELINE_HOUR_HEIGHT / 60;
+const TIMELINE_TOTAL_HEIGHT = TIMELINE_HOUR_HEIGHT * 24;
+const TIMELINE_INITIAL_HOUR = 5;
 
 export function CalendarWorkspace() {
   const queryClient = useQueryClient();
@@ -204,20 +217,15 @@ export function CalendarWorkspace() {
         </Card>
       ) : (
         <>
-          <div className="mt-5 hidden grid-cols-7 gap-2 lg:grid">
-            {days.map((day) => (
-              <DayColumn
-                key={day.toISOString()}
-                day={day}
-                selected={isSameDay(day, selectedDate)}
-                items={itemsForDay(day)}
-                routines={routinesForDay(day)}
-                onSelect={() => setSelectedDate(day)}
-                onCreate={() => openCreate(day)}
-                onEdit={openEdit}
-              />
-            ))}
-          </div>
+          <WeekTimeline
+            days={days}
+            selectedDate={selectedDate}
+            items={calendar.data?.items ?? []}
+            routines={routines.data ?? []}
+            onSelect={setSelectedDate}
+            onCreate={openCreate}
+            onEdit={openEdit}
+          />
           <div className="mt-5 lg:hidden">
             <div className="mb-3 grid grid-cols-7 gap-1">
               {days.map((day) => (
@@ -297,60 +305,467 @@ type DayContentProps = {
   onCreate: () => void;
 };
 
-function DayColumn({
-  day,
-  selected,
+function WeekTimeline({
+  days,
+  selectedDate,
   items,
   routines,
   onSelect,
-  onEdit,
   onCreate,
-}: DayContentProps & { selected: boolean; onSelect: () => void }) {
+  onEdit,
+}: {
+  days: Date[];
+  selectedDate: Date;
+  items: CalendarItem[];
+  routines: Awaited<ReturnType<typeof routinesApi.list>>;
+  onSelect: (day: Date) => void;
+  onCreate: (day: Date) => void;
+  onEdit: (event: CalendarEventItem) => void;
+}) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const hours = Array.from({ length: 24 }, (_, hour) => hour);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    container.scrollTop = TIMELINE_INITIAL_HOUR * TIMELINE_HOUR_HEIGHT;
+  }, []);
+
+  return (
+    <>
+      <div className="text-muted-foreground mt-4 hidden flex-wrap items-center gap-x-5 gap-y-2 text-xs lg:flex">
+        <span className="inline-flex items-center gap-2">
+          <span className="border-info/40 bg-info-soft/25 size-3 rounded border border-dashed" />
+          Thời gian được bảo vệ
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span className="bg-primary-soft border-primary/40 size-3 rounded border" />
+          Phiên học
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span className="bg-accent-soft border-accent/40 size-3 rounded border" />
+          Sinh hoạt
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <CircleAlert className="text-warning size-3.5" aria-hidden="true" />
+          Cần xếp lại
+        </span>
+        <span className="ml-auto">
+          Di chuột hoặc chọn một block để xem đầy đủ
+        </span>
+      </div>
+      <div
+        ref={scrollContainerRef}
+        className="border-border bg-surface mt-3 hidden max-h-[72vh] overflow-auto rounded-[24px] border lg:block"
+      >
+        <div className="min-w-[72rem]">
+          <div className="border-border bg-surface sticky top-0 z-30 grid grid-cols-[4.5rem_repeat(7,minmax(0,1fr))] border-b">
+            <div className="text-muted-foreground flex items-center justify-center text-[10px] font-semibold">
+              Giờ
+            </div>
+            {days.map((day) => (
+              <div
+                key={day.toISOString()}
+                className={cn(
+                  "border-border focus-visible:ring-ring/35 flex min-h-16 items-center justify-between border-l px-3 text-left outline-none focus-visible:ring-3",
+                  isSameDay(day, selectedDate) && "bg-primary-soft/60",
+                )}
+              >
+                <button
+                  type="button"
+                  aria-pressed={isSameDay(day, selectedDate)}
+                  onClick={() => onSelect(day)}
+                  className="focus-visible:ring-ring/35 min-w-0 flex-1 rounded-xl text-left outline-none focus-visible:ring-3"
+                >
+                  <span className="text-muted-foreground block text-[10px] font-semibold capitalize">
+                    {format(day, "EEEE", { locale: vi })}
+                  </span>
+                  <strong className="font-display mt-1 block text-lg">
+                    {format(day, "dd")}
+                  </strong>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onCreate(day)}
+                  className="text-muted-foreground hover:bg-surface-muted focus-visible:ring-ring/35 grid size-8 place-items-center rounded-xl outline-none focus-visible:ring-3"
+                  aria-label={`Thêm sự kiện ${format(day, "dd/MM")}`}
+                >
+                  <Plus className="size-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-[4.5rem_repeat(7,minmax(0,1fr))]">
+            <div className="relative" style={{ height: TIMELINE_TOTAL_HEIGHT }}>
+              {hours.map((hour) => (
+                <span
+                  key={hour}
+                  className="text-muted-foreground absolute right-3 -translate-y-1/2 text-[10px] tabular-nums"
+                  style={{ top: hour * TIMELINE_HOUR_HEIGHT }}
+                >
+                  {String(hour).padStart(2, "0")}:00
+                </span>
+              ))}
+            </div>
+            {days.map((day) => (
+              <TimelineDay
+                key={day.toISOString()}
+                day={day}
+                selected={isSameDay(day, selectedDate)}
+                blocks={buildTimelineBlocks(day, routines, items)}
+                tooltipAlign={
+                  day === days[0]
+                    ? "start"
+                    : day === days.at(-1)
+                      ? "end"
+                      : "center"
+                }
+                onCreate={() => onCreate(day)}
+                onEdit={onEdit}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function TimelineDay({
+  day,
+  selected,
+  blocks,
+  tooltipAlign,
+  onCreate,
+  onEdit,
+}: {
+  day: Date;
+  selected: boolean;
+  blocks: TimelineBlock[];
+  tooltipAlign: "start" | "center" | "end";
+  onCreate: () => void;
+  onEdit: (event: CalendarEventItem) => void;
+}) {
+  const now = new Date();
+  const currentMinute = now.getHours() * 60 + now.getMinutes();
   return (
     <div
       className={cn(
-        "border-border bg-surface min-h-[32rem] rounded-[22px] border p-2",
-        selected && "border-primary/50",
+        "calendar-hour-grid border-border relative border-l",
+        selected && "bg-primary-soft/15",
       )}
+      style={{
+        height: TIMELINE_TOTAL_HEIGHT,
+        backgroundSize: `100% ${TIMELINE_HOUR_HEIGHT}px`,
+      }}
+      onDoubleClick={onCreate}
     >
+      {blocks.map((block) => {
+        const protectedBy = findOverlappingProtectedRoutine(block, blocks);
+        return (
+          <TimelineEvent
+            key={block.key}
+            block={block}
+            protectedBy={protectedBy}
+            tooltipAlign={tooltipAlign}
+            onEdit={onEdit}
+          />
+        );
+      })}
+      {isSameDay(day, now) ? (
+        <div
+          className="pointer-events-none absolute inset-x-0 z-20 border-t border-[var(--coral)]"
+          style={{ top: currentMinute * TIMELINE_MINUTE_HEIGHT }}
+        >
+          <span className="absolute -top-1.5 -left-1 size-3 rounded-full bg-[var(--coral)]" />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function isProtectedRoutine(routine: Routine): boolean {
+  return routine.type === "WORK" || routine.type === "SLEEP";
+}
+
+function findOverlappingProtectedRoutine(
+  block: TimelineBlock,
+  blocks: TimelineBlock[],
+): Routine | null {
+  if (block.kind === "ROUTINE" && isProtectedRoutine(block.routine)) {
+    return null;
+  }
+
+  const protectedBlock = blocks.find(
+    (candidate) =>
+      candidate.kind === "ROUTINE" &&
+      isProtectedRoutine(candidate.routine) &&
+      block.startMinute < candidate.endMinute &&
+      block.endMinute > candidate.startMinute,
+  );
+
+  return protectedBlock?.kind === "ROUTINE" ? protectedBlock.routine : null;
+}
+
+function TimelineEvent({
+  block,
+  protectedBy,
+  tooltipAlign,
+  onEdit,
+}: {
+  block: TimelineBlock;
+  protectedBy: Routine | null;
+  tooltipAlign: "start" | "center" | "end";
+  onEdit: (event: CalendarEventItem) => void;
+}) {
+  const duration = block.endMinute - block.startMinute;
+  const visualHeight = duration * TIMELINE_MINUTE_HEIGHT;
+  const tooltipAbove = block.startMinute >= 18 * 60;
+  if (block.kind === "ROUTINE") {
+    const protectedTime = isProtectedRoutine(block.routine);
+    const startLabel = block.continuation ? "00:00" : block.routine.startTime;
+    const endLabel = block.endMinute === 1440 ? "24:00" : block.routine.endTime;
+    const protectedIcon =
+      block.routine.type === "SLEEP" ? (
+        <MoonStar className="size-3 shrink-0" aria-hidden="true" />
+      ) : (
+        <BriefcaseBusiness className="size-3 shrink-0" aria-hidden="true" />
+      );
+
+    if (protectedTime) {
+      return (
+        <div
+          data-testid={`timeline-${block.key}`}
+          className="border-info/30 bg-info-soft/20 text-info-foreground pointer-events-none absolute z-[1] overflow-hidden rounded-xl border border-dashed text-left"
+          style={{
+            top: block.startMinute * TIMELINE_MINUTE_HEIGHT,
+            height: Math.max(28, visualHeight),
+            left: 4,
+            right: 4,
+          }}
+          title={`${block.routine.title} · ${startLabel}–${endLabel}`}
+        >
+          <div className="border-info/20 bg-info-soft/70 absolute inset-y-1 left-1 flex w-5 flex-col items-center gap-1 overflow-hidden rounded-md border py-1">
+            {protectedIcon}
+            <span className="overflow-hidden text-[8px] font-bold tracking-[0.12em] uppercase opacity-70 [writing-mode:vertical-rl]">
+              {block.routine.title}
+            </span>
+          </div>
+          <span className="sr-only">
+            {block.routine.title}, {startLabel} đến {endLabel}, thời gian được
+            bảo vệ
+          </span>
+        </div>
+      );
+    }
+
+    const tooltipId = `timeline-detail-${block.key}`;
+    return (
       <button
         type="button"
-        onClick={onSelect}
-        className="focus-visible:ring-ring/35 mb-2 w-full rounded-xl p-2 text-left outline-none focus-visible:ring-3"
+        data-testid={`timeline-${block.key}`}
+        aria-label={`Xem ${block.routine.title}, ${startLabel} đến ${endLabel}`}
+        aria-describedby={tooltipId}
+        className={cn(
+          "group focus-visible:ring-ring/50 absolute z-[3] rounded-lg border px-2 py-1 text-left shadow-sm outline-none hover:z-30 focus:z-30 focus-visible:ring-2",
+          block.routine.type === "BREAKFAST" ||
+            block.routine.type === "LUNCH" ||
+            block.routine.type === "DINNER"
+            ? "border-accent/40 bg-accent-soft text-accent-foreground"
+            : block.routine.type === "EXERCISE"
+              ? "border-primary/35 bg-primary-soft text-primary-strong"
+              : "border-coral/30 bg-coral-soft text-coral-foreground",
+        )}
+        style={{
+          top: block.startMinute * TIMELINE_MINUTE_HEIGHT,
+          height: Math.max(24, visualHeight),
+          left: protectedBy ? 30 : 8,
+          right: 7,
+        }}
       >
-        <span className="text-muted-foreground block text-xs font-semibold capitalize">
-          {format(day, "EEEE", { locale: vi })}
+        <span className="block truncate text-[10px] leading-3.5 font-semibold">
+          {visualHeight < 38 ? (
+            <span className="font-normal tabular-nums opacity-70">
+              {startLabel} ·{" "}
+            </span>
+          ) : null}
+          {block.routine.title}
         </span>
-        <strong
+        {visualHeight >= 38 ? (
+          <span className="mt-0.5 block truncate text-[8px] leading-3 tabular-nums opacity-70">
+            {startLabel}–{endLabel}
+          </span>
+        ) : null}
+        <TimelineTooltip
+          id={tooltipId}
+          title={block.routine.title}
+          time={`${startLabel}–${endLabel}`}
+          detail={protectedBy ? `Nằm trong ${protectedBy.title}` : "Sinh hoạt"}
+          align={tooltipAlign}
+          above={tooltipAbove}
+        />
+      </button>
+    );
+  }
+
+  const item = block.item;
+  if (item.kind === "STUDY_SESSION") {
+    const tooltipId = `timeline-detail-${block.key}`;
+    const hasProtectedConflict = Boolean(protectedBy);
+    return (
+      <button
+        type="button"
+        aria-label={`Xem phiên học ${item.task.title}`}
+        aria-describedby={tooltipId}
+        className={cn(
+          "group focus-visible:ring-ring/50 absolute z-[5] rounded-lg border px-2 py-1 text-left shadow-md outline-none hover:z-30 focus:z-30 focus-visible:ring-2",
+          hasProtectedConflict
+            ? "border-warning/70 bg-warning/15 text-foreground"
+            : "border-primary/30 bg-primary-soft text-primary-strong",
+        )}
+        style={{
+          top: block.startMinute * TIMELINE_MINUTE_HEIGHT,
+          height: Math.max(24, visualHeight),
+          left: protectedBy ? 30 : 12,
+          right: 4,
+        }}
+      >
+        <span
           className={cn(
-            "font-display mt-1 grid size-8 place-items-center rounded-xl",
-            isSameDay(day, new Date()) && "bg-primary text-primary-foreground",
+            "block truncate text-[10px] leading-3.5 font-semibold",
+            hasProtectedConflict && "pr-4",
           )}
         >
-          {format(day, "dd")}
-        </strong>
-      </button>
-      <div className="space-y-1.5">
-        {routines.map((routine) => (
-          <RoutineBlock
-            key={routine.id}
-            title={routine.title}
-            start={routine.startTime}
-            end={routine.endTime}
+          {visualHeight < 38 ? (
+            <span className="font-normal tabular-nums opacity-70">
+              {timeLabel(item.startAt)} ·{" "}
+            </span>
+          ) : null}
+          {item.task.title}
+        </span>
+        {hasProtectedConflict ? (
+          <CircleAlert
+            className="text-warning absolute top-1 right-1 size-3.5"
+            aria-hidden="true"
           />
-        ))}
-        {items.map((item) => (
-          <CalendarBlock key={item.id} item={item} onEdit={onEdit} />
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={onCreate}
-        className="text-muted-foreground hover:text-primary-strong mt-2 min-h-10 w-full rounded-xl text-xs"
-      >
-        + Thêm
+        ) : null}
+        {visualHeight >= 38 ? (
+          <span className="mt-0.5 flex items-center gap-1 truncate text-[8px] leading-3 tabular-nums opacity-70">
+            <Clock3 className="size-2.5" /> {timeLabel(item.startAt)}–
+            {timeLabel(item.endAt)}
+          </span>
+        ) : null}
+        <TimelineTooltip
+          id={tooltipId}
+          title={item.task.title}
+          time={`${timeLabel(item.startAt)}–${timeLabel(item.endAt)}`}
+          detail={
+            protectedBy
+              ? `Xung đột với ${protectedBy.title}. Phiên học cần được xếp lại.`
+              : "Phiên học"
+          }
+          warning={hasProtectedConflict}
+          align={tooltipAlign}
+          above={tooltipAbove}
+        />
       </button>
-    </div>
+    );
+  }
+
+  const tooltipId = `timeline-detail-${block.key}`;
+  return (
+    <button
+      type="button"
+      onClick={() => onEdit(item)}
+      aria-label={`Chỉnh sửa ${item.title}`}
+      aria-describedby={tooltipId}
+      className="border-coral/30 bg-coral-soft text-coral-foreground hover:border-coral/60 group focus-visible:ring-ring/50 absolute z-[4] rounded-lg border px-2 py-1 text-left shadow-md outline-none hover:z-30 focus:z-30 focus-visible:ring-2"
+      style={{
+        top: block.startMinute * TIMELINE_MINUTE_HEIGHT,
+        height: Math.max(24, visualHeight),
+        left: protectedBy ? 30 : 12,
+        right: 4,
+      }}
+    >
+      <span className="block truncate text-[10px] leading-3.5 font-semibold">
+        {visualHeight < 38 ? (
+          <span className="font-normal tabular-nums opacity-70">
+            {timeLabel(item.startAt)} ·{" "}
+          </span>
+        ) : null}
+        {item.title}
+      </span>
+      {visualHeight >= 38 ? (
+        <span className="mt-0.5 flex items-center gap-1 truncate text-[8px] leading-3 tabular-nums opacity-70">
+          <Clock3 className="size-2.5" /> {timeLabel(item.startAt)}–
+          {timeLabel(item.endAt)}
+        </span>
+      ) : null}
+      <TimelineTooltip
+        id={tooltipId}
+        title={item.title}
+        time={`${timeLabel(item.startAt)}–${timeLabel(item.endAt)}`}
+        detail={protectedBy ? `Nằm trong ${protectedBy.title}` : "Sự kiện"}
+        align={tooltipAlign}
+        above={tooltipAbove}
+      />
+    </button>
+  );
+}
+
+function TimelineTooltip({
+  id,
+  title,
+  time,
+  detail,
+  warning = false,
+  align,
+  above,
+}: {
+  id: string;
+  title: string;
+  time: string;
+  detail: string;
+  warning?: boolean;
+  align: "start" | "center" | "end";
+  above: boolean;
+}) {
+  return (
+    <span
+      id={id}
+      role="tooltip"
+      className={cn(
+        "bg-surface text-foreground border-border pointer-events-none invisible absolute z-50 w-56 rounded-xl border p-3 text-left opacity-0 shadow-xl transition-[opacity,visibility,transform] duration-150 group-hover:visible group-hover:opacity-100 group-focus:visible group-focus:opacity-100",
+        above
+          ? "bottom-full mb-2 translate-y-1 group-hover:translate-y-0 group-focus:translate-y-0"
+          : "top-full mt-2 -translate-y-1 group-hover:translate-y-0 group-focus:translate-y-0",
+        align === "start"
+          ? "left-0"
+          : align === "end"
+            ? "right-0"
+            : "left-1/2 -translate-x-1/2",
+      )}
+    >
+      <span className="block text-xs leading-4 font-semibold whitespace-normal">
+        {title}
+      </span>
+      <span className="text-muted-foreground mt-1 block text-[10px] tabular-nums">
+        {time}
+      </span>
+      <span
+        className={cn(
+          "mt-2 flex items-start gap-1.5 text-[10px] leading-4 whitespace-normal",
+          warning ? "text-warning" : "text-muted-foreground",
+        )}
+      >
+        {warning ? (
+          <CircleAlert className="mt-0.5 size-3 shrink-0" aria-hidden="true" />
+        ) : null}
+        {detail}
+      </span>
+    </span>
   );
 }
 
@@ -361,6 +776,7 @@ function DayAgenda({
   onEdit,
   onCreate,
 }: DayContentProps) {
+  const entries = buildDayEntries(routines, items);
   return (
     <Card className="p-4">
       <div className="mb-4 flex items-center justify-between">
@@ -377,17 +793,18 @@ function DayAgenda({
         </Button>
       </div>
       <div className="space-y-2">
-        {routines.map((routine) => (
-          <RoutineBlock
-            key={routine.id}
-            title={routine.title}
-            start={routine.startTime}
-            end={routine.endTime}
-          />
-        ))}
-        {items.map((item) => (
-          <CalendarBlock key={item.id} item={item} onEdit={onEdit} />
-        ))}
+        {entries.map((entry) =>
+          entry.kind === "ROUTINE" ? (
+            <RoutineBlock
+              key={entry.key}
+              title={entry.routine.title}
+              start={entry.routine.startTime}
+              end={entry.routine.endTime}
+            />
+          ) : (
+            <CalendarBlock key={entry.key} item={entry.item} onEdit={onEdit} />
+          ),
+        )}
         {!items.length && !routines.length ? (
           <div className="py-10 text-center">
             <CalendarDays className="text-muted-foreground mx-auto size-8" />

@@ -14,30 +14,34 @@ export class ScheduleJobsRepository {
     });
   }
 
-  findActive(userId: string, roadmapId: string) {
-    return this.prisma.backgroundJob.findFirst({
-      where: {
-        userId,
-        queueName: SCHEDULE_QUEUE,
-        status: { in: [JobStatus.QUEUED, JobStatus.RUNNING] },
-        payload: { path: ['roadmapId'], equals: roadmapId },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-  }
+  createOrGetActive(data: ScheduleJobData) {
+    return this.prisma.$transaction(async (transaction) => {
+      const lockKey = `schedule:${data.userId}:${data.roadmapId}`;
+      await transaction.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))::text`;
+      const active = await transaction.backgroundJob.findFirst({
+        where: {
+          userId: data.userId,
+          queueName: SCHEDULE_QUEUE,
+          status: { in: [JobStatus.QUEUED, JobStatus.RUNNING] },
+          payload: { path: ['roadmapId'], equals: data.roadmapId },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (active) return { job: active, created: false as const };
 
-  create(data: ScheduleJobData) {
-    return this.prisma.backgroundJob.create({
-      data: {
-        id: data.backgroundJobId,
-        userId: data.userId,
-        queueName: SCHEDULE_QUEUE,
-        externalId: data.backgroundJobId,
-        type: 'SCHEDULE_GENERATION',
-        status: JobStatus.QUEUED,
-        statusMessage: 'Schedule generation queued.',
-        payload: { ...data },
-      },
+      const job = await transaction.backgroundJob.create({
+        data: {
+          id: data.backgroundJobId,
+          userId: data.userId,
+          queueName: SCHEDULE_QUEUE,
+          externalId: data.backgroundJobId,
+          type: 'SCHEDULE_GENERATION',
+          status: JobStatus.QUEUED,
+          statusMessage: 'Schedule generation queued.',
+          payload: { ...data },
+        },
+      });
+      return { job, created: true as const };
     });
   }
 

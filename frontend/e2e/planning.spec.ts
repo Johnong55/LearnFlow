@@ -31,9 +31,13 @@ async function mockSession(page: Page) {
   );
 }
 
-test("today page starts the next study session", async ({ page }) => {
+test("focus mode supports start, pause, resume and reflective completion", async ({
+  page,
+}) => {
   await mockSession(page);
   let started = false;
+  let paused = false;
+  let completionPayload: Record<string, unknown> | null = null;
   const session = {
     kind: "STUDY_SESSION",
     id: "0b8794e4-9af0-40f4-b09d-d80bcd0fae86",
@@ -42,6 +46,11 @@ test("today page starts the next study session", async ({ page }) => {
     endAt: new Date(Date.now() + 45 * 60_000).toISOString(),
     plannedMinutes: 45,
     actualMinutes: null,
+    startedAt: null,
+    lastResumedAt: null,
+    pausedAt: null,
+    completedAt: null,
+    accumulatedSeconds: 0,
     status: "SCHEDULED",
     source: "GENERATED",
     task: {
@@ -77,7 +86,40 @@ test("today page starts the next study session", async ({ page }) => {
     return route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(response({ ...session, status: "IN_PROGRESS" })),
+      body: JSON.stringify(
+        response({
+          ...session,
+          status: "IN_PROGRESS",
+          startedAt: new Date().toISOString(),
+          lastResumedAt: new Date().toISOString(),
+        }),
+      ),
+    });
+  });
+  await page.route("**/api/v1/sessions/*/pause", (route) => {
+    paused = true;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(
+        response({
+          ...session,
+          status: "PAUSED",
+          accumulatedSeconds: 5,
+          pausedAt: new Date().toISOString(),
+        }),
+      ),
+    });
+  });
+  await page.route("**/api/v1/sessions/*/complete", async (route) => {
+    completionPayload = route.request().postDataJSON() as Record<
+      string,
+      unknown
+    >;
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(response({ ...session, status: "COMPLETED" })),
     });
   });
 
@@ -86,6 +128,38 @@ test("today page starts the next study session", async ({ page }) => {
 
   await expect.poll(() => started).toBe(true);
   await expect(page.getByText("Đã bắt đầu phiên học")).toBeVisible();
+  await expect(page.getByText("Focus", { exact: true })).toBeVisible();
+  await expect(page.getByRole("timer")).toBeVisible();
+  await expect(
+    page.getByText("Giữ sự chú ý cho bước nhỏ đang ở trước mắt."),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Nghỉ một nhịp" }).click();
+  await expect.poll(() => paused).toBe(true);
+  await expect(
+    page.getByText("Rời mắt khỏi màn hình, thả lỏng vai và hít thở chậm."),
+  ).toBeVisible();
+  await expect(page.getByRole("timer", { name: /Nghỉ còn/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "5 phút" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  await page.getByRole("button", { name: "Quay lại học" }).click();
+  await page.getByRole("button", { name: "Hoàn thành", exact: true }).click();
+  await expect(page.getByText("Trước khi kết thúc")).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "Ghi chú phiên học" })
+    .fill("Đã hiểu cách Promise chaining hoạt động.");
+  await page.getByRole("button", { name: "Mức tập trung: Rất tốt" }).click();
+  await page.getByRole("button", { name: "Hoàn thành và lưu" }).click();
+
+  await expect.poll(() => completionPayload).not.toBeNull();
+  expect(completionPayload).toMatchObject({
+    notes: "Đã hiểu cách Promise chaining hoạt động.",
+    focusLevel: 5,
+  });
+  await expect(page.getByText("Đã hoàn thành phiên học")).toBeVisible();
 });
 
 test("calendar previews a deterministic schedule before saving", async ({
@@ -155,6 +229,253 @@ test("calendar previews a deterministic schedule before saving", async ({
 
   await expect(page.getByText("Promises và async/await")).toBeVisible();
   await expect(page.getByText("45", { exact: true }).first()).toBeVisible();
+});
+
+test("an existing schedule is explicitly rebalanced instead of generated again", async ({
+  page,
+}) => {
+  await mockSession(page);
+  let generateCalls = 0;
+  let rebalanceCalls = 0;
+  await page.route("**/api/v1/calendar/week**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(
+        response({
+          from: new Date().toISOString(),
+          to: new Date().toISOString(),
+          items: [],
+        }),
+      ),
+    }),
+  );
+  await page.route("**/api/v1/routines", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(response([])),
+    }),
+  );
+  await page.route("**/api/v1/roadmaps", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(
+        response([
+          {
+            id: "663eb7e5-4b9d-4394-96bd-da30946014f0",
+            activeVersionNumber: 1,
+            currentVersionNumber: 1,
+          },
+        ]),
+      ),
+    }),
+  );
+  await page.route("**/api/v1/schedules/preview", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(
+        response({
+          roadmapId: "663eb7e5-4b9d-4394-96bd-da30946014f0",
+          roadmapVersion: 1,
+          sessions: [],
+          unscheduledTasks: [],
+          summary: {
+            scheduledTasks: 0,
+            scheduledSessions: 0,
+            scheduledMinutes: 0,
+            unscheduledTasks: 0,
+          },
+          impact: { action: "REBALANCE", existingSessions: 6 },
+        }),
+      ),
+    }),
+  );
+  await page.route("**/api/v1/schedules/generate", (route) => {
+    generateCalls += 1;
+    return route.fulfill({ status: 500, body: "must not be called" });
+  });
+  await page.route("**/api/v1/schedules/rebalance", (route) => {
+    rebalanceCalls += 1;
+    return route.fulfill({
+      status: 202,
+      contentType: "application/json",
+      body: JSON.stringify(
+        response({
+          jobId: "schedule-rebalance-job",
+          status: "QUEUED",
+          progress: 0,
+          message: "Queued",
+          error: null,
+          result: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }),
+      ),
+    });
+  });
+  await page.route("**/api/v1/schedules/jobs/schedule-rebalance-job", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(
+        response({
+          jobId: "schedule-rebalance-job",
+          status: "COMPLETED",
+          progress: 100,
+          message: "Completed",
+          error: null,
+          result: {},
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }),
+      ),
+    }),
+  );
+
+  await page.goto("/app/calendar");
+  await page.getByRole("button", { name: /Xếp lịch học/ }).click();
+  await page.getByRole("button", { name: /Xem trước/ }).click();
+
+  await expect(page.getByText("Lịch học đã tồn tại")).toBeVisible();
+  await expect(
+    page.getByText(/6 phiên chưa bắt đầu sẽ được thay thế/),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /Tái cân bằng lịch/ }).click();
+
+  await expect.poll(() => rebalanceCalls).toBe(1);
+  expect(generateCalls).toBe(0);
+  await expect(
+    page.getByRole("button", { name: /Xem lịch đã tạo/ }),
+  ).toBeVisible();
+});
+
+test("protected work time contains shorter routine blocks on the timeline", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium");
+  await mockSession(page);
+  const monday = new Date();
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  monday.setHours(9, 15, 0, 0);
+  const sessionEnd = new Date(monday.getTime() + 40 * 60_000);
+  await page.route("**/api/v1/calendar/week**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(
+        response({
+          from: "2026-07-27T00:00:00.000+07:00",
+          to: "2026-08-03T00:00:00.000+07:00",
+          items: [
+            {
+              kind: "STUDY_SESSION",
+              id: "conflicting-session",
+              taskId: "work-conflict-task",
+              startAt: monday.toISOString(),
+              endAt: sessionEnd.toISOString(),
+              plannedMinutes: 40,
+              actualMinutes: null,
+              startedAt: null,
+              lastResumedAt: null,
+              pausedAt: null,
+              completedAt: null,
+              accumulatedSeconds: 0,
+              status: "SCHEDULED",
+              source: "GENERATED",
+              task: {
+                id: "work-conflict-task",
+                title: "Phiên học bị trùng giờ",
+                description: null,
+                difficulty: "BEGINNER",
+                estimatedMinutes: 40,
+              },
+            },
+          ],
+        }),
+      ),
+    }),
+  );
+  await page.route("**/api/v1/routines", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(
+        response([
+          {
+            id: "work",
+            userId: user.id,
+            title: "Work",
+            type: "WORK",
+            weekdays: ["MONDAY"],
+            startTime: "08:30",
+            endTime: "17:30",
+            source: "USER",
+            createdAt: "2026-07-01T00:00:00.000Z",
+            updatedAt: "2026-07-01T00:00:00.000Z",
+          },
+          {
+            id: "breakfast",
+            userId: user.id,
+            title: "Bữa sáng",
+            type: "BREAKFAST",
+            weekdays: ["MONDAY"],
+            startTime: "08:45",
+            endTime: "09:00",
+            source: "USER",
+            createdAt: "2026-07-01T00:00:00.000Z",
+            updatedAt: "2026-07-01T00:00:00.000Z",
+          },
+        ]),
+      ),
+    }),
+  );
+  await page.route("**/api/v1/roadmaps", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(response([])),
+    }),
+  );
+
+  await page.goto("/app/calendar");
+
+  const work = page.getByTestId("timeline-routine-work-start");
+  const breakfast = page.getByTestId("timeline-routine-breakfast-start");
+  await expect(work).toBeVisible();
+  await expect(breakfast).toBeVisible();
+
+  const workBox = await work.boundingBox();
+  const breakfastBox = await breakfast.boundingBox();
+  expect(workBox).not.toBeNull();
+  expect(breakfastBox).not.toBeNull();
+  expect(workBox!.height).toBeGreaterThan(breakfastBox!.height * 10);
+  expect(breakfastBox!.y).toBeGreaterThan(workBox!.y);
+  expect(breakfastBox!.y + breakfastBox!.height).toBeLessThan(
+    workBox!.y + workBox!.height,
+  );
+  await expect
+    .poll(async () =>
+      breakfast.evaluate((element) =>
+        Number(window.getComputedStyle(element).zIndex),
+      ),
+    )
+    .toBeGreaterThan(
+      await work.evaluate((element) =>
+        Number(window.getComputedStyle(element).zIndex),
+      ),
+    );
+
+  const conflictingSession = page.getByRole("button", {
+    name: "Xem phiên học Phiên học bị trùng giờ",
+  });
+  await expect(conflictingSession).toBeVisible();
+  await conflictingSession.hover();
+  await expect(
+    page.getByText("Xung đột với Work. Phiên học cần được xếp lại."),
+  ).toBeVisible();
 });
 
 test("routine can be created through the accessible editor", async ({

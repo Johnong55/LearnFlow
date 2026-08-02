@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   ConstraintPriority,
   LearningTaskStatus,
+  Prisma,
   SchedulingConflictStatus,
   StudySessionSource,
   StudySessionStatus,
@@ -20,11 +21,12 @@ export class SchedulingRepository {
     range: {
       from: string;
       to: string;
+      timeZone?: string;
       mode: SchedulingInput['mode'];
       minimumSessionMinutes: number;
       breakMinutes: number;
     },
-  ): Promise<{ input: SchedulingInput; version: number }> {
+  ): Promise<{ input: SchedulingInput; version: number; replaceableSessionCount: number }> {
     const roadmap = await this.prisma.roadmap.findFirst({
       where: { id: roadmapId, userId, deletedAt: null },
       include: {
@@ -98,6 +100,12 @@ export class SchedulingRepository {
         },
       }),
     ]);
+    const sessionsToReplace = existingSessions.filter(
+      (session) =>
+        session.task.module.milestone.version.roadmapId === roadmapId &&
+        session.status === StudySessionStatus.SCHEDULED &&
+        session.source !== StudySessionSource.MANUAL,
+    );
     const sessionsToKeep = existingSessions.filter(
       (session) =>
         session.task.module.milestone.version.roadmapId !== roadmapId ||
@@ -111,6 +119,7 @@ export class SchedulingRepository {
     }
     return {
       version: versionNumber,
+      replaceableSessionCount: sessionsToReplace.length,
       input: {
         from: range.from,
         to: range.to,
@@ -175,6 +184,25 @@ export class SchedulingRepository {
     };
   }
 
+  async countReplaceableSessions(
+    userId: string,
+    roadmapId: string,
+    range: { from: string; to: string; timeZone: string },
+  ): Promise<number> {
+    const startAt = zonedDateTimeToUtc(range.from, '00:00', range.timeZone);
+    const endAt = zonedDateTimeToUtc(addLocalDays(range.to, 1), '00:00', range.timeZone);
+    return this.prisma.studySession.count({
+      where: {
+        userId,
+        deletedAt: null,
+        source: { in: [StudySessionSource.GENERATED, StudySessionSource.REBALANCED] },
+        status: StudySessionStatus.SCHEDULED,
+        startAt: { gte: startAt, lt: endAt },
+        task: { module: { milestone: { version: { roadmapId } } } },
+      },
+    });
+  }
+
   async replaceGeneratedPlan(
     userId: string,
     roadmapId: string,
@@ -184,15 +212,23 @@ export class SchedulingRepository {
     source: StudySessionSource,
   ) {
     return this.prisma.$transaction(async (transaction) => {
-      await transaction.studySession.deleteMany({
-        where: {
-          userId,
-          source: { in: [StudySessionSource.GENERATED, StudySessionSource.REBALANCED] },
-          status: StudySessionStatus.SCHEDULED,
-          startAt: { gte: from, lt: to },
-          task: { module: { milestone: { version: { roadmapId } } } },
-        },
-      });
+      const replaceableWhere: Prisma.StudySessionWhereInput = {
+        userId,
+        source: { in: [StudySessionSource.GENERATED, StudySessionSource.REBALANCED] },
+        status: StudySessionStatus.SCHEDULED,
+        startAt: { gte: from, lt: to },
+        task: { module: { milestone: { version: { roadmapId } } } },
+      };
+      if (source === StudySessionSource.GENERATED) {
+        const existing = await transaction.studySession.count({ where: replaceableWhere });
+        if (existing > 0) {
+          throw new Error(
+            'A generated schedule already exists. Use rebalance instead of creating another plan.',
+          );
+        }
+      } else {
+        await transaction.studySession.deleteMany({ where: replaceableWhere });
+      }
       if (plan.sessions.length) {
         await transaction.studySession.createMany({
           data: plan.sessions.map((session) => ({
